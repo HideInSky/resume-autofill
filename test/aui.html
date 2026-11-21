@@ -192,7 +192,7 @@ const SAMPLE = {
   intent: { city: '杭州市', city2: '南京' },
   education: [
     { start: '2024-09', end: '2026-05', country: '美国', province: 'Wisconsin', city: 'Madison', school: '示例大学麦迪逊分校',
-      college: '统计系', major: '数据科学', degree: '硕士', rank: 'TOP10%' },
+      college: '统计系', major: '数据科学', degree: '硕士', rank: '15' },
     { start: '2019-09', school: '样例学院', degree: '本科' },
   ],
   work: [{ company: '示例科技', start: '2025-06', end: '2025-08', department: '数据部', title: '数据分析实习生', description: '负责报表与归因分析' }],
@@ -228,7 +228,7 @@ const EXPECT = [
   ['国家', picked('e1_country'), 'United States'], ['省', picked('e1_prov'), 'Wisconsin'], ['市', picked('e1_city'), 'Madison'],
   ['学校1(输入过滤)', picked('e1_school'), '示例大学'], ['院系', val('e1_college'), '统计系'], ['专业(输入过滤)', picked('e1_major'), '数据科学'],
   ['学历1', picked('e1_degree'), '硕士研究生'], ['学制', picked('e1_mode'), '全日制'], ['研究方向(自定义)', val('e1_research'), '因果推断'],
-  ['导师姓名(不填)', val('e1_mentor'), ''], ['成绩排名', picked('e1_rank'), 'TOP10%'], ['学生干部', picked('e1_cadre'), '0'], ['重点实验室', picked('e1_lab'), '0'],
+  ['导师姓名(不填)', val('e1_mentor'), ''], ['成绩排名(15→前20%)', picked('e1_rank'), 'TOP20%'], ['学生干部', picked('e1_cadre'), '0'], ['重点实验室', picked('e1_lab'), '0'],
   ['入学时间2', val('e2_start'), '2019-09-01'], ['学校2', picked('e2_school'), '样例学院'], ['学历2', picked('e2_degree'), '本科'],
   ['单位名称', val('w_company'), '示例科技'], ['工作开始', val('w_start'), '2025-06-01'], ['工作结束', val('w_end'), '2025-08-01'],
   ['任职部门', val('w_dept'), '数据部'], ['担任职位', val('w_title'), '数据分析实习生'], ['工作职责', val('w_desc'), '负责报表与归因分析'],

@@ -1,5 +1,6 @@
 // 字段定义：资料编辑页、弹窗和填表引擎共用这一份。
 // match / not 是对「表单字段描述」（label、placeholder、name、id 等，已转小写）做匹配的正则。
+// any: 选项里找不到对应的就随便选第一个（比如「从哪里知道我们的」）。
 // req: 必填（资料页标 * ，没填标红）。fallback: 没填时用的默认值（资料页标蓝）。hidden: 不在资料页显示。
 // only: 'select' 只匹配下拉/单选，only: 'text' 只匹配输入框（同一个标题下有两个控件时用来区分）。
 // 想支持新的字段或新的网站叫法，改这里就行。
@@ -22,6 +23,8 @@
       province: /省份|province/,
       city: /城市|地点|所在地|city|location/,
       cert: /证书|certificate/,
+      // range: 一个标题下并排两个时间框（起 / 止）
+      range: /起止|起讫|时间段|在校时间|就读时间|任职时间|工作时间|period|duration/,
       score: /成绩|分数|score/,
     },
 
@@ -73,14 +76,15 @@
           f('degree', '学历 / 学位', /学历|学位|degree|education level/, {
             type: 'select',
             options: ['', '大专', '本科', '硕士', '博士', '其他'],
-            not: /时间|日期|date|证书/,
+            not: /时间|日期|date|证书|类型/,
             req: true,
           }),
           f('major', '专业', /专业|major|field of study|discipline|area of study/, { not: /技能|skill|排名|证书|资格/, req: true }),
           f('college', '学院 / 院系', /学院|院系|faculty/, { req: true }),
-          f('rank', '成绩排名', /排名|rank/, { placeholder: '如 TOP10%' }),
+          // percent: 资料里只写一个数字；下拉里选「前 N%」中刚好能包住它的那一档
+          f('rank', '成绩排名（前百分之几）', /排名|rank/, { placeholder: '只填数字，如 15 表示前 15%', percent: true }),
           f('gpa', 'GPA / 绩点', /gpa|绩点|平均分|平均成绩|学业成绩/),
-          f('mode', '学制', /学制|学习形式|培养方式/, { type: 'select', options: ['', '全日制', '非全日制'], fallback: '全日制' }),
+          f('mode', '学制', /学制|学历类型|学习形式|培养方式/, { type: 'select', options: ['', '全日制', '非全日制'], fallback: '全日制' }),
           f('cadre', '是否学生干部', /是否.*学生干部|担任.*学生干部/, { type: 'select', options: YES_NO, not: /级别|名称|职务/, fallback: '否' }),
           f('keyLab', '是否国家重点实验室', /重点实验室/, { type: 'select', options: YES_NO, not: /所在|名称/, fallback: '否' }),
           f('country', '学校所在国家', null, { generic: 'country', placeholder: '如 中国 / 美国' }),
@@ -98,7 +102,7 @@
         fields: [
           f('position', '应聘职位', /应聘|期望职位|期望岗位|意向职位|意向岗位|求职意向|desired (position|role|title)|applying for/),
           f('salary', '期望薪资', /薪资|薪酬|月薪|年薪|salary|compensation/),
-          f('relocate', '是否接受工作地变更', /工作地变更|工作地点变更|接受.*(调动|外派)|relocat/, { type: 'select', options: YES_NO, fallback: '是' }),
+          f('relocate', '是否接受工作地变更', /工作地变更|工作地点变更|接受.*(调动|外派|派遣)|工作派遣|全球范围|relocat/, { type: 'select', options: YES_NO, fallback: '是' }),
           f('acceptArea', '可接受工作地', /可接受工作地/, { placeholder: '如 全国各地', fallback: '全国各地' }),
           // 期望城市在资料页里是三层可拖动的卡片（cities）；填表前按「从上到下、从左到右」展开成第一 / 二 / 三意向
           f('cities', '期望城市', null, { type: 'tiers', req: true }),
@@ -106,7 +110,7 @@
           f('city3', '第三意向城市', /第三意向|第三志愿.*(城市|地)/, { hidden: true }),
           f('city', '第一意向城市', /期望城市|意向城市|期望地点|期望工作地|意向工作地|工作意向地|preferred (city|location)/, { hidden: true }),
           f('referral', '推荐方式（有无内推）', /推荐方式|内推方式|是否内推/, { fallback: '无', pre: true, placeholder: '如 无 / 内推' }),
-          f('source', '招聘信息来源', /信息来源|招聘来源|了解到|获知|渠道|how did you hear|source/, { fallback: '官网', placeholder: '如 官网 / 牛客网' }),
+          f('source', '招聘信息来源', /信息来源|招聘来源|了解到|获知|渠道|how did you hear|source/, { fallback: '官网', placeholder: '如 官网 / 牛客网', any: true }),
           f('available', '最快到岗时间', /到岗|入职时间|可入职|available|earliest start|notice period/),
           f('adjust', '是否服从调剂 / 调配', /服从.*(调配|调剂|分配)|接受调剂/, { type: 'select', options: YES_NO, fallback: '是' }),
         ],

@@ -26,8 +26,8 @@
   const SYNONYMS = [
     ['女', 'female', 'woman', 'f', '女士'],
     ['男', 'male', 'man', 'm', '先生'],
-    ['是', 'yes', 'true', 'y'],
-    ['否', 'no', 'false', 'n'],
+    ['是', 'yes', 'true', 'y', '接受', '愿意', '服从', '同意', '可以'],
+    ['否', 'no', 'false', 'n', '不接受', '不愿意', '不服从', '不同意', '不可以'],
     ['本科', '学士', 'bachelor', 'bachelors', "bachelor's", 'undergraduate', 'ba', 'bs'],
     ['硕士', 'master', 'masters', "master's", 'ms', 'ma', 'graduate'],
     ['博士', 'phd', 'ph d', 'doctor', 'doctorate', 'doctoral'],
@@ -67,8 +67,11 @@
     const terms = termsFor(value);
     const exact = options.find((o) => terms.includes(o.text));
     if (exact) return exact;
+    // 想选「是 / 接受」时，别被「不接受」「否」这种带同样字眼的选项骗了
+    const positive = terms.includes('是');
+    const negated = (text) => positive && /^(不|否|无法|拒绝|暂不)|不(接受|愿意|服从|同意|可以)/.test(text);
     for (const t of terms) {
-      const hit = options.find((o) => o.text && termHits(o.text, t));
+      const hit = options.find((o) => o.text && !negated(o.text) && termHits(o.text, t));
       if (hit) return hit;
     }
     const v = terms[0];
@@ -83,6 +86,22 @@
         .filter((o) => o.text.length >= (isCJK(o.text) ? 2 : 4) && v.includes(o.text))
         .sort((a, b) => b.text.length - a.text.length)[0] || null
     );
+  }
+
+  // 成绩排名：资料里是一个数字（前百分之几）。选项里挑「上限 ≥ 这个数」的最小一档，
+  // 比如填 15，选项有 前5% / 前10% / 前20% / 前50%，就选 前20%。
+  function pickPercent(options, value) {
+    const n = parseFloat(String(value).replace(/[^\d.]/g, ''));
+    if (isNaN(n)) return pickOption(options, value);
+    const upper = (text) => {
+      const nums = (text.match(/\d+(\.\d+)?(?=\s*%)/g) || []).map(Number);
+      return nums.length ? Math.max(...nums) : null;
+    };
+    const fits = options
+      .map((o) => ({ o, top: upper(o.text) }))
+      .filter((x) => x.top != null && x.top >= n)
+      .sort((a, b) => a.top - b.top);
+    return fits.length ? fits[0].o : pickOption(options, '其他');
   }
 
   // —— 找控件、读标题 ——
@@ -132,7 +151,7 @@
 
   // 往外找包住这个控件的「表单项」，取离它最近、排在它前面的标题
   function containerInfo(el, group) {
-    for (let node = el.parentElement, d = 0; node && node !== document.body && d < 8; node = node.parentElement, d++) {
+    for (let node = el.parentElement, d = 0; node && node !== document.body && d < 12; node = node.parentElement, d++) {
       const all = [...node.querySelectorAll(FIELD_SEL)].filter((x) => !SKIP_TYPES.has(x.type));
       let units;
       if (el.type === 'file') units = all.filter((x) => x.type === 'file');
@@ -153,6 +172,7 @@
         const wrap = c.closest('label');
         if (wrap && wrap.querySelector(FIELD_SEL)) continue; // 单选项自己的文字
         if (c.tagName === 'LABEL' && c.control && c.control !== el) continue;
+        if (/desc|tip|hint|help|error|extra|placeholder|count/i.test(String(c.className))) continue; // 标题下面的说明、报错
         if (shortText(c)) best = c;
       }
       if (best) return { text: shortText(best), forAttr: norm(best.getAttribute('for')), pos: units.indexOf(el), size: units.length };
@@ -271,7 +291,7 @@
 
   // —— 自定义下拉框：点开 → 等选项出现 → 点选项；找不到就输入关键字过滤再找 ——
   const OPTION_SEL =
-    '[role="option"],li[class*="item"],li[class*="option"],[class*="select-item"],[class*="dropdown"] [class*="option"],[class*="cascader-node"]';
+    '[role="option"],li[class*="item"],li[class*="option"],[class*="select-item"],[class*="select__list__item"],[class*="select-option"],[class*="dropdown"] [class*="option"],[class*="cascader-node"]';
   const visibleOptions = () => [...document.querySelectorAll(OPTION_SEL)].filter(visible);
   const toOptions = (els) => els.map((el) => ({ el, text: norm(el.textContent) }));
   function queries(value) {
@@ -279,7 +299,7 @@
     const list = isCJK(v) ? [v, v.slice(0, 4), v.slice(0, 2)] : [v, v.split(/\s+/)[0]];
     return [...new Set(list)].filter((q) => q.length >= 2);
   }
-  async function fillCustomSelect(el, value) {
+  async function fillCustomSelect(el, value, anyOk, pick = pickOption) {
     const before = new Set(visibleOptions());
     const fresh = () => visibleOptions().filter((o) => !before.has(o));
     const waitFresh = async (ms) => {
@@ -316,7 +336,9 @@
       return picked > 0;
     }
     const typer = el.tagName === 'INPUT' ? el : el.querySelector('input');
-    let hit = pickOption(toOptions(await waitFresh(1500)), value);
+    const first = toOptions(await waitFresh(1500));
+    let hit = pick(first, value);
+    if (!hit && anyOk) hit = first.find((o) => o.text) || null; // 这一项随便选一个就行
     if (!hit && typer) {
       // 选项太多（学校、专业）只渲染了一部分：输入关键字让它过滤
       for (const q of queries(value)) {
@@ -344,6 +366,8 @@
   function panelMode() {
     const open = [...document.querySelectorAll('[class*="picker-dropdown"],[class*="picker-panel"],[class*="date-picker"]')].filter(visible);
     const has = (re) => open.some((p) => p.querySelector(re));
+    // 有的组件类名写着 date，面板里其实只有 1 月到 12 月
+    if (open.some((p) => /0?1月/.test(p.textContent) && /12月/.test(p.textContent) && !/31/.test(p.textContent))) return 'month';
     if (has('[class*="date-panel"],[class*="date-table"]')) return 'date';
     if (has('[class*="month-panel"],[class*="month-table"]')) return 'month';
     if (has('[class*="year-panel"],[class*="year-table"]')) return 'year';
@@ -351,8 +375,9 @@
   }
   async function fillPicker(el, value) {
     const m = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(value);
-    const range = el.closest('[class*="range"]');
-    const isStart = !!range && range.querySelector('input') === el;
+    let range = el.closest('[class*="range"]');
+    while (range && range.parentElement && range.parentElement.closest('[class*="range"]')) range = range.parentElement.closest('[class*="range"]'); // 取最外层
+    const isStart = !!range && range.querySelectorAll('input').length > 1 && range.querySelector('input') === el;
     let tries = [value];
     for (let n = 0; n < tries.length; n++) {
       press(el);
@@ -594,7 +619,7 @@
         const kindOk = (field) => !field.only || (field.only === 'select') === isSelect;
         const tryGeneric = () => {
           for (const [g, re] of Object.entries(S.generic)) {
-            if (!test(re)) continue;
+            if (g === 'range' || !test(re)) continue;
             const sec = sectionById[desc.hint || desc.headSec || state.current];
             const field = sec && sec.fields.find((x) => x.generic === g);
             if (field) return place(sec, field);
@@ -614,6 +639,12 @@
           return null;
         };
         // 已经知道在哪一段经历里（看小标题或外层容器）：先按那一段的字段认
+        // 「起止时间」下并排两个框：前一个是开始，后一个是结束
+        if (desc.size === 2 && test(S.generic.range)) {
+          const sec = sectionById[desc.hint || desc.headSec || state.current];
+          const field = sec && sec.fields.find((x) => x.generic === (desc.pos === 0 ? 'start' : 'end'));
+          if (field) return useField(sec, field);
+        }
         const here = sectionById[desc.headSec];
         if (here && here.repeat) {
           const hit = inSection(here);
@@ -724,7 +755,7 @@
       }
 
       let kind = isRadio ? 'radio' : el.tagName === 'SELECT' ? 'select' : isCustomSelect(el) ? 'custom' : 'text';
-      if (kind === 'text' && inDatePicker(el) && (el.readOnly || el.closest('.ant-picker,.el-date-editor'))) kind = 'picker';
+      if (kind === 'text' && inDatePicker(el) && (el.readOnly || el.closest('.ant-picker,.el-date-editor,[class*="range-picker"],[class*="date-picker-input"]'))) kind = 'picker';
       if (kind === 'text' && (el.readOnly || el.type === 'search')) continue;
 
       // 即使这个控件不用再填，也要走一遍识别，才能数清「现在是第几段经历」
@@ -751,7 +782,7 @@
       } else if (kind === 'select') {
         if (!opts.overwrite && el.selectedIndex > 0 && el.value !== '') { report.kept++; continue; }
         const options = [...el.options].filter((o) => o.value !== '').map((o) => ({ el: o, text: norm(o.textContent) }));
-        const opt = pickOption(options, value);
+        const opt = (hit.field.percent ? pickPercent : pickOption)(options, value);
         if (!opt) { report.unknown++; continue; }
         setNative(el, opt.el.value);
         highlight(el);
@@ -762,8 +793,11 @@
           if (n.matches(SELECT_WRAP)) chosen = n.querySelector('[class*="selection-item"],[class*="selected-value"],[class*="single-value"],[class*="select-value"],[class*="select__placeholder"]:not(.is-transparent)');
         }
         if (!chosen && isComboDiv(el)) chosen = el.querySelector('[class*="selected-value"],[class*="selection-item"]');
+        // 通用判断：下拉外框里没有占位提示、却有文字，说明已经选过了
+        const shell = el.tagName === 'INPUT' && el.closest('[class*="select"]:not([class*="search"]):not([class*="selection"]):not([class*="input"])');
+        if (!chosen && shell && !shell.querySelector('[class*="placeholder"]') && shell.textContent.trim()) chosen = shell;
         if (!opts.overwrite && ((el.value || '').trim() || (chosen && chosen.textContent.trim()))) { report.kept++; continue; }
-        if (!(await fillCustomSelect(el, value))) { report.unknown++; continue; }
+        if (!(await fillCustomSelect(el, value, hit.field.any, hit.field.percent ? pickPercent : pickOption))) { report.unknown++; continue; }
         highlight(el);
       } else if (kind === 'picker') {
         if (!opts.overwrite && el.value.trim()) { report.kept++; continue; }
@@ -772,7 +806,8 @@
       } else {
         if (!opts.overwrite && el.value.trim()) { report.kept++; continue; }
         const isDate = hit.field.type === 'date' || hit.field.type === 'month';
-        const out = isDate ? formatDate(value, el) : value;
+        let out = isDate ? formatDate(value, el) : value;
+        if (hit.field.percent && /^\d+(\.\d+)?$/.test(out)) out = `前${out}%`; // 文本框里写成「前15%」
         if ((el.type === 'date' || el.type === 'month') && !/^\d{4}-\d{2}(-\d{2})?$/.test(out)) { report.unknown++; continue; }
         if (el.type === 'number' && isNaN(Number(out))) { report.unknown++; continue; }
         setNative(el, out);
