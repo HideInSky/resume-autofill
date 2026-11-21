@@ -2,11 +2,21 @@
   "manifest_version": 3,
   "name": "简历自动填 Resume Autofill（本地·开源）",
   "short_name": "简历自动填",
-  "version": "0.2.0",
-  "description": "一键或自动填写网申表单、上传简历。所有资料只保存在你自己的浏览器里，可用主密码加密，扩展不发送任何网络请求。",
-  "permissions": ["storage", "unlimitedStorage", "activeTab", "scripting"],
-  "optional_host_permissions": ["<all_urls>"],
-  "background": { "service_worker": "src/background.js" },
+  "version": "0.3.0",
+  "description": "一键或自动填写网申表单、上传简历。所有资料只保存在你自己的浏览器里，扩展不发送任何网络请求。",
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "activeTab",
+    "scripting",
+    "sidePanel"
+  ],
+  "optional_host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
   "action": {
     "default_title": "简历自动填",
     "default_popup": "src/popup.html"
@@ -17,11 +27,16 @@
   },
   "commands": {
     "_execute_action": {
-      "suggested_key": { "default": "Alt+Shift+F" },
+      "suggested_key": {
+        "default": "Alt+Shift+F"
+      },
       "description": "打开简历自动填"
     }
   },
   "content_security_policy": {
     "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'"
+  },
+  "side_panel": {
+    "default_path": "src/popup.html?side=1"
   }
 }

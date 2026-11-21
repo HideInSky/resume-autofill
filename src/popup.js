@@ -3,6 +3,9 @@ let book = { active: 0, list: [] };
 let index = 0; // 这个标签页用第几套资料
 let profile = {};
 let tab = null;
+// 侧边栏模式：和弹窗是同一个页面，但不会因为点到网页而被关掉
+const SIDE = new URLSearchParams(location.search).has('side');
+if (SIDE) document.body.classList.add('side');
 
 const hasData = (p) =>
   Object.values(p || {}).some((v) =>
@@ -113,6 +116,7 @@ function renderCopyList() {
 }
 
 async function fill(forceOverwrite) {
+  if (SIDE) [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const result = $('result');
   result.className = 'muted';
   result.style.whiteSpace = 'pre-line';
@@ -137,7 +141,9 @@ async function fill(forceOverwrite) {
     result.textContent = lines.join('\n');
   } catch (e) {
     result.className = 'err';
-    result.textContent = '这个页面无法填写（浏览器内置页面或应用商店页面不允许扩展操作）。' + (e?.message ? `\n${e.message}` : '');
+    result.textContent =
+      (SIDE ? '没能填写。在侧边栏里填写需要先打开「打开网页时自动填写」，或者点一下工具栏上的扩展图标再试。' : '这个页面无法填写（浏览器内置页面或应用商店页面不允许扩展操作）。') +
+      (e?.message ? `\n${e.message}` : '');
   }
   $('fill').disabled = false;
 }
@@ -150,6 +156,16 @@ $('locked').addEventListener('submit', async (e) => {
   if (ok) refresh();
 });
 $('fill').addEventListener('click', () => fill());
+$('pin').hidden = SIDE || !chrome.sidePanel;
+$('pin').addEventListener('click', async () => {
+  await chrome.sidePanel.open({ windowId: tab.windowId });
+  window.close();
+});
+if (SIDE) {
+  // 切换标签页时，跟着换成那个页面用的资料
+  chrome.tabs.onActivated.addListener(refresh);
+  document.querySelector('details').open = true;
+}
 $('setup').addEventListener('click', () => chrome.runtime.openOptionsPage());
 $('edit').addEventListener('click', () => chrome.runtime.openOptionsPage());
 $('lock').addEventListener('click', async () => {

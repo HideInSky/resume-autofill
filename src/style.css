@@ -195,3 +195,7 @@ details[open] > summary { margin-bottom: 8px; color: var(--ink); }
 .foot { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 #status.ok { color: var(--bg); }
 .steps-nav { scrollbar-width: none; }
+
+/* 侧边栏：同一个页面，占满侧边栏的宽和高 */
+body.side { width: auto; min-height: 100vh; }
+body.side .copy-list { max-height: none; }
