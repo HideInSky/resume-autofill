@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>简历自动填 · 我的资料</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>简历自动填 · 我的资料</h1>
+      <span class="muted">所有内容只保存在这台电脑的浏览器里，扩展不联网。</span>
+    </header>
+
+    <!-- 已加密且未解锁 -->
+    <section id="locked" class="card" hidden>
+      <h2>已锁定</h2>
+      <p class="muted">输入主密码解锁后才能查看和编辑资料。</p>
+      <form id="unlock-form" class="row">
+        <input id="unlock-pw" type="password" placeholder="主密码" autocomplete="off">
+        <button class="primary">解锁</button>
+        <span id="unlock-msg" class="err"></span>
+      </form>
+      <p class="muted">忘记主密码无法找回，只能<button id="wipe-locked" class="link danger">清空全部数据</button>后重新填写。</p>
+    </section>
+
+    <main id="editor" hidden>
+      <section class="card">
+        <h2>安全与数据</h2>
+        <p id="sec-state" class="muted"></p>
+        <form id="pw-form" class="row">
+          <input id="pw1" type="password" placeholder="新主密码（至少 8 位）" autocomplete="new-password">
+          <input id="pw2" type="password" placeholder="再输一次" autocomplete="new-password">
+          <button id="pw-set">设置主密码</button>
+          <button id="pw-remove" type="button" class="danger" hidden>取消加密</button>
+          <button id="lock-now" type="button" hidden>立即锁定</button>
+        </form>
+        <p id="pw-msg" class="muted"></p>
+        <div class="row">
+          <button id="export">导出备份 (JSON)</button>
+          <button id="import">导入备份</button>
+          <input id="import-file" type="file" accept="application/json,.json" hidden>
+          <button id="wipe" class="danger">清空全部数据</button>
+        </div>
+        <p class="muted">导出的备份是<b>明文</b>文件（不含简历和照片文件），请自己保管好。</p>
+      </section>
+
+      <section class="card">
+        <h2>自动填写</h2>
+        <p class="muted">默认只有点「一键填写」时才填。对某个网站开启自动填写后，以后一打开它的页面就会直接填好（包括上传简历）。<br>
+          开启方法：在那个网站上点扩展图标，勾选「在此网站自动填写」。只对你信任的招聘网站开启——开启后该网站上任何带「手机」「邮箱」字样的输入框都会被填上。</p>
+        <div id="sites" class="site-list"></div>
+        <div class="row">
+          <button id="grant-all">对所有网站开启</button>
+          <button id="revoke-all" class="danger">全部关闭</button>
+        </div>
+        <label class="check"><input id="auto-password" type="checkbox"> 自动填写时也填密码框（注册 / 登录页的密码）</label>
+        <p class="muted">设置了主密码时，每次重启浏览器后要先点一下扩展图标解锁，自动填写才会工作。</p>
+      </section>
+
+      <section class="card">
+        <h2>简历和照片文件</h2>
+        <p class="muted">遇到「上传简历」「个人照片」的上传框时自动传上去。可以放多份简历（比如不同岗位、中英文），选一份作为当前使用的；弹窗里也能随时切换。单个文件不超过 5 MB。</p>
+        <div id="resumes" class="site-list"></div>
+        <div class="row">
+          <button id="add-resume">+ 添加简历文件</button>
+          <input id="resume-file" type="file" accept=".pdf,.doc,.docx,.txt,.rtf" multiple hidden>
+          <button id="set-photo">选择照片</button>
+          <input id="photo-file" type="file" accept=".jpg,.jpeg,.png,.bmp,.gif" hidden>
+          <span id="photo-name" class="muted"></span>
+          <button id="del-photo" class="link danger" hidden>删除照片</button>
+        </div>
+      </section>
+
+      <div id="sections"></div>
+    </main>
+  </div>
+  <div id="status" class="muted" hidden></div>
+
+  <script src="schema.js"></script>
+  <script src="vault.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

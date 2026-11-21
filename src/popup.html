@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>简历自动填</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="popup">
+  <h1>简历自动填</h1>
+
+  <form id="locked" class="stack" hidden>
+    <span class="muted">资料已加密，输入主密码解锁。</span>
+    <input id="pw" type="password" placeholder="主密码" autocomplete="off">
+    <button class="primary">解锁</button>
+    <span id="pw-msg" class="err"></span>
+  </form>
+
+  <div id="empty" class="stack" hidden>
+    <span class="muted">还没有填写资料。</span>
+    <button id="setup" class="primary">去填写我的资料</button>
+  </div>
+
+  <div id="ready" class="stack" hidden>
+    <button id="fill" class="primary">一键填写当前页面</button>
+    <label class="check"><input id="opt-overwrite" type="checkbox"> 覆盖已有内容</label>
+    <label class="check"><input id="opt-password" type="checkbox"> 填写密码框（仅在你信任的网站勾选）</label>
+    <label id="site-row" class="check" hidden><input id="opt-site" type="checkbox"> <span id="site-label">在此网站自动填写</span></label>
+    <label id="resume-row" class="field" hidden><span>上传用的简历</span><select id="resume-pick"></select></label>
+    <div id="result" class="muted"></div>
+    <details>
+      <summary>没填上？点击复制</summary>
+      <div id="copy" class="copy-list"></div>
+    </details>
+  </div>
+
+  <div class="foot">
+    <button id="edit" class="link">编辑资料</button>
+    <button id="lock" class="link" hidden>锁定</button>
+  </div>
+
+  <script src="schema.js"></script>
+  <script src="vault.js"></script>
+  <script src="run.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

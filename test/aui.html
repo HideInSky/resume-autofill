@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>自定义组件测试页</title>
+<style>
+  body { font: 14px/1.6 sans-serif; max-width: 820px; margin: 20px auto; }
+  .aui-form-item { display: flex; gap: 10px; margin: 6px 0; align-items: center; }
+  .aui-form-item__label { width: 190px; flex: none; }
+  .aui-select, .picker { display: inline-block; }
+  .aui-select-dropdown { position: absolute; background: #fff; border: 1px solid #999; max-height: 160px; overflow: auto; z-index: 9; }
+  .aui-select-dropdown ul { list-style: none; margin: 0; padding: 0; }
+  .aui-select-dropdown__item { padding: 2px 10px; cursor: pointer; }
+  .module-header-title { font-weight: 700; margin-top: 18px; }
+  .aui-upload { border: 1px dashed #999; padding: 6px 10px; }
+  #out { white-space: pre-wrap; background: #f3f3f3; padding: 10px; }
+</style>
+</head>
+<body>
+<h1>自定义组件测试页（虚构数据）</h1>
+<p>仿照国内网申系统常见的写法：标题和控件靠外层容器关联、下拉框是「只读输入框 + 挂在 body 上的选项列表」、
+国家/省/市三个下拉共用一个标题、单选框没有 name、上传框的 input 是隐藏的。直接打开本页会自动运行自检。</p>
+<pre id="out">运行中…</pre>
+<div id="app"></div>
+
+<script src="../src/schema.js"></script>
+<script src="../src/filler.js"></script>
+<script type="module">
+const h = (tag, props = {}, kids = []) => { const n = Object.assign(document.createElement(tag), props); kids.forEach((k) => n.append(k)); return n; };
+const app = document.getElementById('app');
+const refs = {};
+
+// —— 仿制控件 ——
+function item(label, forAttr, ...controls) {
+  return h('div', { className: 'aui-col' }, [h('div', { className: 'aui-form-item' }, [
+    h('label', { className: 'aui-form-item__label', htmlFor: forAttr, textContent: label }),
+    h('div', { className: 'aui-form-item__content' }, controls),
+  ])]);
+}
+function text(id, placeholder = '请输入', type = 'text') {
+  refs[id] = h('input', { className: 'aui-input__inner', type, placeholder });
+  return h('div', { className: 'aui-input' }, [h('span', { className: 'aui-input-display-only' }, [refs[id]])]);
+}
+function area(id) {
+  refs[id] = h('textarea', { className: 'aui-textarea__inner', placeholder: '请输入', value: '\n      ' });
+  return h('div', { className: 'aui-textarea' }, [refs[id]]);
+}
+function date(id, placeholder = '请选择', disabled = false) {
+  refs[id] = h('input', { type: 'text', placeholder, disabled });
+  const box = h('div', { className: 'picker' }, [h('span', { className: 'aui-popover-wrapper' }, [h('div', { className: 'input size-small' }, [refs[id]])])]);
+  box.setAttribute('data-tag', 'we-datepicker');
+  return box;
+}
+// 下拉框：options 可以是数组或返回数组的函数；filterable 时一次只渲染 6 个（模拟虚拟列表），靠输入过滤
+function select(id, options, { filterable = false, placeholder = '请选择' } = {}) {
+  const input = h('input', { className: 'aui-input__inner', type: 'text', readOnly: true, placeholder });
+  const wrap = h('div', { className: 'aui-select aui-select__filterable' }, [h('div', { className: 'aui-input' }, [input])]);
+  const ul = h('ul', { className: 'aui-select-dropdown__list' });
+  const dd = h('div', { className: 'aui-select-dropdown aui-popper' }, [ul]);
+  dd.style.display = 'none';
+  document.body.append(dd);
+  const render = () => {
+    const q = filterable && !input.readOnly ? input.value : '';
+    const list = (typeof options === 'function' ? options() : options).filter((o) => o.includes(q)).slice(0, filterable ? 6 : 999);
+    ul.replaceChildren(...list.map((o) => {
+      const li = h('li', { className: 'aui-select-dropdown__item' }, [h('div', { className: 'aui-select-dropdown__item-wrapper' }, [h('span', { className: 'aui-select-dropdown__item-label', textContent: o })])]);
+      li.addEventListener('click', () => { input.readOnly = true; input.value = o; wrap.dataset.value = o; dd.style.display = 'none'; wrap.dispatchEvent(new CustomEvent('picked')); });
+      return li;
+    }));
+  };
+  wrap.addEventListener('click', () => {
+    const open = dd.style.display === 'none';
+    dd.style.display = open ? 'block' : 'none';
+    if (open) { if (filterable) { input.readOnly = false; input.value = ''; } render(); }
+  });
+  input.addEventListener('input', render);
+  document.addEventListener('click', (e) => { if (e.target === document.body) dd.style.display = 'none'; });
+  wrap.refresh = () => dd.style.display !== 'none' && render();
+  refs[id] = wrap;
+  return wrap;
+}
+function radios(id) {
+  const group = h('div', { className: 'aui-radio-group' }, [['是', '1'], ['否', '0']].map(([t, v]) =>
+    h('label', { className: 'aui-radio' }, [h('span', { className: 'aui-radio__input' }, [h('input', { className: 'aui-radio__original', type: 'radio', value: v })]), h('span', { className: 'aui-radio__label', textContent: t })])));
+  group.setAttribute('role', 'radiogroup');
+  // 没有 name 的单选框：由组件自己保证互斥
+  group.addEventListener('change', (e) => { group.querySelectorAll('input').forEach((r) => (r.checked = r === e.target)); group.dataset.value = e.target.value; });
+  refs[id] = group;
+  return group;
+}
+function upload(id, accept, hint) {
+  refs[id] = h('input', { className: 'aui-upload__input', type: 'file', name: 'file', accept });
+  refs[id].style.display = 'none';
+  return h('div', { className: 'aui-upload aui-upload--text' }, [h('div', { className: 'aui-upload-btn', textContent: hint }), refs[id]]);
+}
+const moduleBox = (cls, title, ...kids) => h('div', { className: `module-container ${cls}`, id: cls }, [
+  h('div', { className: 'module-header' }, [h('div', { className: 'module-header-title', textContent: title })]),
+  h('div', { className: 'module-main' }, kids),
+]);
+
+const SCHOOLS = Array.from({ length: 40 }, (_, i) => `第${i + 1}大学`).concat(['示例大学', '样例学院']);
+const MAJORS = Array.from({ length: 40 }, (_, i) => `专业${i + 1}`).concat(['数据科学', '计算机科学']);
+const COUNTRIES = ['中国', 'Afghanistan', 'Belarus', 'Russian Federation', 'United Kingdom', 'United States'];
+function education(n, full) {
+  let provs = [], cities = [];
+  const country = select(`e${n}_country`, COUNTRIES);
+  const prov = select(`e${n}_prov`, () => provs);
+  const city = select(`e${n}_city`, () => cities);
+  // 选了国家以后，省份列表过一会儿才加载出来
+  country.addEventListener('picked', () => setTimeout(() => { provs = ['California', 'Wisconsin']; prov.refresh(); }, 300));
+  prov.addEventListener('picked', () => setTimeout(() => { cities = ['Madison', 'Milwaukee']; city.refresh(); }, 300));
+  const kids = [
+    item('入学时间', 'startDate', date(`e${n}_start`, '入学时间')),
+    item('毕业或预计毕业时间', 'endDate', date(`e${n}_end`, '获得毕业证或学位证时间')),
+  ];
+  if (full) kids.push(item('毕业院校所在国家/地区', 'schoolCountry', h('div', { className: 'countryProvinceCity-select' }, [country, prov, city])));
+  kids.push(item('毕业院校', 'schoolName', select(`e${n}_school`, SCHOOLS, { filterable: true, placeholder: '请选择或者输入' })));
+  if (full) kids.push(
+    item('就读院系', 'faculties', text(`e${n}_college`, '请填写院系完整中文名称，如“机械工程系”')),
+    item('专业', 'professionalName', select(`e${n}_major`, MAJORS, { filterable: true, placeholder: '请选择或者输入' })));
+  kids.push(item('学历', 'degree', select(`e${n}_degree`, ['博士研究生', '硕士研究生', '本科', '大专'])));
+  if (full) kids.push(
+    item('学制', 'studyDuration', select(`e${n}_mode`, ['全日制', '非全日制'])),
+    item('研究方向', 'researchDirection', text(`e${n}_research`)),
+    item('导师姓名', 'mentorName', text(`e${n}_mentor`)),
+    item('学习成绩排名', 'achievements', select(`e${n}_rank`, ['TOP5%', 'TOP10%', 'TOP20%', '其他'], { placeholder: '请选择成绩排名区段' })),
+    item('是否学生干部', 'isStudentCadre', radios(`e${n}_cadre`)));
+  return moduleBox('educationExperienceModule', `教育经历-${n}`, ...kids);
+}
+
+const phoneCol = h('div', { className: 'aui-col' }, [
+  h('div', { className: 'aui-form-item' }, [h('label', { className: 'aui-form-item__label', htmlFor: 'areaCode', textContent: '联系电话' }),
+    h('div', { className: 'aui-form-item__content' }, [select('b_code', ['英属维尔京群岛(+1340)', '美国,加拿大,多米尼加(+1)', '中国(+86)', '中国香港(+852)'])])]),
+  h('div', { className: 'aui-form-item' }, [h('div', { className: 'aui-form-item__content' }, [text('b_phone')])]),
+]);
+const attach = upload('f_attach', '.pdf,.doc,.docx,.txt', '已有简历.pdf');
+const hiddenLater = item('微信号', 'wechat', text('b_wechat'));
+hiddenLater.style.display = 'none';
+
+app.append(
+  moduleBox('resumeParsingModule', '简历解析', upload('f_parse', '.pdf,.doc,.docx,.jpeg,.jpg,.png', '选择文件（支持格式pdf/.doc/.docx/.png）')),
+  moduleBox('basicInfoModule', '基本信息',
+    item('个人照片', 'photoId', upload('f_photo', '.bmp,.jpg,.png,.gif,.jpeg', '点击上传')),
+    item('姓名', 'name', text('b_name')),
+    item('性别', 'gender', select('b_gender', ['男', '女'])),
+    item('证件签发国家/地区', 'visaIssuingCountry', select('b_issue', ['中国大陆', '中国台湾', '中国香港', '美国', '美利坚合众国'])),
+    item('民族', 'ethnicity', select('b_ethnic', ['回族', '汉族', '满族'])),
+    item('证件', 'credentialNumber', select('b_idtype', ['护照', '中国居民身份证']), text('b_idno')),
+    item('出生日期', 'birthday', date('b_birth', '请选择', true)),
+    phoneCol,
+    item('电子邮箱', 'email', text('b_email', '用于接收面试及录用通知', 'email')),
+    item('籍贯', 'nationality', select('b_home', ['上海', '江苏', '江西', '浙江'])),
+    item('自我评价', 'selfEvaluation', area('b_intro')),
+    item('附件简历', 'attachmentId', attach),
+    hiddenLater),
+  moduleBox('workLocationModule', '求职工作地意向',
+    item('是否接受工作地变更', 'changeWorkLocation', radios('i_change')),
+    item('第一意向工作地', 'firstIntendedWorkLocation', select('i_city1', ['深圳', '北京', '上海', '杭州', '南京'])),
+    item('第二意向工作地', 'secondIntendedWorkLocation', select('i_city2', ['深圳', '北京', '上海', '杭州', '南京'])),
+    item('是否服从岗位调配', 'obedienceToAllocation', radios('i_adjust'))),
+  education(1, true),
+  education(2, false),
+  h('div', { className: 'work-experience-step-main' }, [
+    moduleBox('workExperienceModule', '工作/实习经历',
+      item('单位名称', 'companyName', text('w_company')),
+      item('开始时间', 'startDate', date('w_start')),
+      item('结束时间', 'endDate', date('w_end')),
+      item('任职部门', 'department', text('w_dept')),
+      item('担任职位', 'positionName', text('w_title')),
+      item('主要职责与业绩', 'workResponsibilities', area('w_desc'))),
+    moduleBox('projectExperienceModule', '项目经历-1',
+      item('项目名称', 'projectName', text('p_name')),
+      item('开始时间', 'startDate', date('p_start')),
+      item('项目角色', 'projectJob', text('p_role')),
+      item('主要职责与业绩', 'projectResp', area('p_desc'))),
+  ]),
+  moduleBox('languageSituationModule', '语言情况',
+    item('证书', 'certificateName', select('l_cert', ['英语四级', '英语六级'])),
+    item('成绩', 'certificateScore', text('l_score'))),
+);
+
+// —— 自检 ——
+const SAMPLE = {
+  basic: { name: '张三', gender: '男', nationality: '中国', ethnicity: '汉', idType: '身份证', idNumber: '110101200001011234',
+           phoneCode: '+86', phone: '13800000000', email: 'zhangsan@example.com', hometown: '江苏省', wechat: 'zs_wx' },
+  intent: { city: '杭州市', city2: '南京', adjust: '是' },
+  education: [
+    { start: '2024-09', end: '2026-05', country: '美国', province: 'Wisconsin', city: 'Madison', school: '示例大学麦迪逊分校',
+      college: '统计系', major: '数据科学', degree: '硕士', rank: 'TOP10%' },
+    { start: '2019-09', school: '样例学院', degree: '本科' },
+  ],
+  work: [{ company: '示例科技', start: '2025-06', end: '2025-08', department: '数据部', title: '数据分析实习生', description: '负责报表与归因分析' }],
+  project: [{ name: '归因分析', start: '2024-03', role: '负责人', description: '搭建归因模型' }],
+  other: { selfIntro: '这是一段自我评价。' },
+  custom: [{ keywords: '工作地变更', value: '是' }, { keywords: '学制', value: '全日制' }, { keywords: '学生干部', value: '否' }],
+};
+const META = { resume: { name: 'resume.pdf', type: 'application/pdf', size: 4 }, photo: { name: 'photo.jpg', type: 'image/jpeg', size: 4 } };
+const DATA = { resume: { ...META.resume, data: btoa('%PDF') }, photo: { ...META.photo, data: btoa('JPEG') } };
+
+const t0 = performance.now();
+const r1 = await __resumeAutofill(SAMPLE, META, {});
+const uploaded = __resumeAutofillFiles(Object.fromEntries(r1.wantFiles.map((k) => [k, DATA[k]])));
+const secs = ((performance.now() - t0) / 1000).toFixed(1);
+
+// 自动模式：用户清空的字段不会被填回去；后来才显示出来的字段会被补上
+refs.b_name.value = '';
+hiddenLater.style.display = '';
+const r2 = await __resumeAutofill(SAMPLE, META, { auto: true });
+
+const val = (id) => refs[id].value;
+const picked = (id) => refs[id].dataset.value || '';
+const fname = (id) => (refs[id].files[0] || {}).name || '';
+const EXPECT = [
+  ['性别', picked('b_gender'), '男'], ['证件签发国家', picked('b_issue'), '中国大陆'], ['民族', picked('b_ethnic'), '汉族'],
+  ['证件类型', picked('b_idtype'), '中国居民身份证'], ['证件号码', val('b_idno'), '110101200001011234'],
+  ['出生日期(禁用,不动)', val('b_birth'), ''], ['区号', picked('b_code'), '中国(+86)'], ['手机号', val('b_phone'), '13800000000'],
+  ['邮箱', val('b_email'), 'zhangsan@example.com'], ['籍贯', picked('b_home'), '江苏'], ['自我评价', val('b_intro'), '这是一段自我评价。'],
+  ['工作地变更(自定义)', picked('i_change'), '1'], ['第一意向', picked('i_city1'), '杭州'], ['第二意向', picked('i_city2'), '南京'],
+  ['服从调配', picked('i_adjust'), '1'],
+  ['入学时间1', val('e1_start'), '2024-09-01'], ['毕业时间1', val('e1_end'), '2026-05-01'],
+  ['国家', picked('e1_country'), 'United States'], ['省', picked('e1_prov'), 'Wisconsin'], ['市', picked('e1_city'), 'Madison'],
+  ['学校1(输入过滤)', picked('e1_school'), '示例大学'], ['院系', val('e1_college'), '统计系'], ['专业(输入过滤)', picked('e1_major'), '数据科学'],
+  ['学历1', picked('e1_degree'), '硕士研究生'], ['学制(自定义)', picked('e1_mode'), '全日制'], ['研究方向(不填)', val('e1_research'), ''],
+  ['导师姓名(不填)', val('e1_mentor'), ''], ['成绩排名', picked('e1_rank'), 'TOP10%'], ['学生干部(自定义)', picked('e1_cadre'), '0'],
+  ['入学时间2', val('e2_start'), '2019-09-01'], ['学校2', picked('e2_school'), '样例学院'], ['学历2', picked('e2_degree'), '本科'],
+  ['单位名称', val('w_company'), '示例科技'], ['工作开始', val('w_start'), '2025-06-01'], ['工作结束', val('w_end'), '2025-08-01'],
+  ['任职部门', val('w_dept'), '数据部'], ['担任职位', val('w_title'), '数据分析实习生'], ['工作职责', val('w_desc'), '负责报表与归因分析'],
+  ['项目名称', val('p_name'), '归因分析'], ['项目开始', val('p_start'), '2024-03-01'], ['项目角色', val('p_role'), '负责人'],
+  ['项目职责', val('p_desc'), '搭建归因模型'], ['语言证书(不填)', picked('l_cert'), ''], ['语言成绩(不填)', val('l_score'), ''],
+  ['简历解析上传', fname('f_parse'), 'resume.pdf'], ['照片上传', fname('f_photo'), 'photo.jpg'], ['已有附件不重传', fname('f_attach'), ''],
+  ['上传了 2 个文件', String(uploaded.length), '2'],
+  ['自动模式:清空的姓名不回填', val('b_name'), ''], ['自动模式:新出现的微信被补上', val('b_wechat'), 'zs_wx'],
+  ['自动模式:只填 1 项', String(r2.filled.length), '1'],
+];
+const fails = EXPECT.filter(([, got, want]) => got !== want);
+document.getElementById('out').textContent =
+  `${EXPECT.length - fails.length}/${EXPECT.length} 通过（用时 ${secs} 秒）\n` +
+  fails.map(([n, got, want]) => `✗ ${n}: 得到「${got}」，期望「${want}」`).join('\n') +
+  `\n\n第一次: 填 ${r1.filled.length} 项，没认出 ${r1.unknown} 项，资料缺: ${r1.noData.join('、')}`;
+</script>
+</body>
+</html>

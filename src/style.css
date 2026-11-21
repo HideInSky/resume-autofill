@@ -1,0 +1,98 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --text: #1c2330;
+  --muted: #667085;
+  --line: #dfe3ea;
+  --accent: #1f6feb;
+  --accent-text: #ffffff;
+  --danger: #c62828;
+  --ok: #1a7f37;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171c;
+    --card: #1d2128;
+    --text: #e6e9ee;
+    --muted: #98a2b3;
+    --line: #333a45;
+    --accent: #4c8dff;
+    --accent-text: #0b1220;
+    --danger: #ff6b6b;
+    --ok: #4ac26b;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+}
+h1 { font-size: 20px; margin: 0; }
+h2 { font-size: 16px; margin: 0 0 4px; }
+.muted { color: var(--muted); font-size: 12.5px; }
+.ok { color: var(--ok); }
+.err { color: var(--danger); }
+[hidden] { display: none !important; }
+
+input, select, textarea, button { font: inherit; color: inherit; }
+input, select, textarea {
+  width: 100%;
+  padding: 7px 9px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+textarea { min-height: 76px; resize: vertical; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+button {
+  padding: 7px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+button.danger { color: var(--danger); }
+button.link { border: 0; background: none; padding: 0; color: var(--accent); }
+label.check { display: flex; gap: 6px; align-items: center; }
+label.check input { width: auto; }
+
+/* —— 资料编辑页 —— */
+.page { max-width: 860px; margin: 0 auto; padding: 24px 16px 80px; }
+.page > header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-top: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-top: 12px; }
+.field > span { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 3px; }
+.field.wide { grid-column: 1 / -1; }
+.pw { display: flex; gap: 6px; }
+.entry { border: 1px dashed var(--line); border-radius: 8px; padding: 12px; margin-top: 12px; }
+.entry-head { display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+.row input { width: auto; flex: 1 1 180px; }
+#status { position: fixed; right: 16px; bottom: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; }
+
+/* —— 弹窗 —— */
+.popup { width: 320px; padding: 14px; }
+.popup h1 { font-size: 15px; }
+.popup .stack { display: grid; gap: 10px; margin-top: 12px; }
+.popup button.primary { padding: 10px; font-size: 15px; }
+.copy-list { max-height: 220px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
+.copy-list button { display: flex; justify-content: space-between; gap: 10px; width: 100%; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; text-align: left; padding: 6px 9px; }
+.copy-list button:last-child { border-bottom: 0; }
+.copy-list b { font-weight: 400; color: var(--muted); flex: none; }
+.copy-list span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.foot { display: flex; justify-content: space-between; margin-top: 12px; }
+
+/* —— 网站 / 文件列表 —— */
+.site-list { display: grid; gap: 6px; margin-top: 10px; }
+.site { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; }
+.card > label.check { margin-top: 12px; }
+button:disabled { opacity: .6; cursor: default; }
+.popup .field > span { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 3px; }
