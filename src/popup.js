@@ -1,4 +1,6 @@
 const $ = (id) => document.getElementById(id);
+let book = { active: 0, list: [] };
+let index = 0; // 这个标签页用第几套资料
 let profile = {};
 let tab = null;
 
@@ -11,8 +13,9 @@ async function refresh() {
   [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const state = await Vault.state();
   const locked = state === 'locked';
-  profile = locked ? {} : await Vault.load();
-  const ready = !locked && hasData(profile);
+  if (!locked) ({ book, index } = await pickProfile(tab.id));
+  profile = locked ? {} : book.list[index].data || {};
+  const ready = !locked && book.list.some((p) => hasData(p.data));
   $('locked').hidden = !locked;
   $('empty').hidden = locked || ready;
   $('ready').hidden = !ready;
@@ -20,57 +23,55 @@ async function refresh() {
   if (locked) $('pw').focus();
   if (!ready) return;
   renderCopyList();
-  renderSite();
-  renderResumes();
+  renderAuto();
+  renderProfiles();
 }
 
-// —— 在此网站自动填写（= 授予 / 撤销这个网站的权限）——
-const siteOrigin = () => {
-  try {
-    const u = new URL(tab.url);
-    return /^https?:$/.test(u.protocol) ? u.origin + '/*' : null;
-  } catch {
-    return null;
-  }
-};
-async function renderSite() {
-  const origin = siteOrigin();
-  $('site-row').hidden = !origin;
-  if (!origin) return;
-  const { origins = [] } = await chrome.permissions.getAll();
-  const all = origins.includes('<all_urls>') || origins.includes('*://*/*');
-  $('opt-site').checked = all || origins.includes(origin);
-  $('opt-site').disabled = all;
-  $('site-label').textContent = all ? '已对所有网站开启自动填写' : `在此网站自动填写（${new URL(tab.url).hostname}）`;
-}
-$('opt-site').addEventListener('change', async (e) => {
-  const origin = siteOrigin();
-  if (!origin) return;
-  // 授权弹窗可能会让这个小窗口关掉；后台会监听权限变化并完成设置
-  if (e.target.checked) await chrome.permissions.request({ origins: [origin] });
-  else await chrome.permissions.remove({ origins: [origin] });
-  renderSite();
-});
-
-// —— 选择上传哪份简历 ——
-async function renderResumes() {
-  const files = await Vault.loadFiles();
-  const list = files.resumes || [];
-  $('resume-row').hidden = list.length < 2;
-  $('resume-pick').replaceChildren(
-    ...list.map((f, i) => {
+// —— 这个页面用哪套资料（PM / DA …）——
+function renderProfiles() {
+  $('prof-row').hidden = book.list.length < 2;
+  $('prof-pick').replaceChildren(
+    ...book.list.map((p, i) => {
       const o = document.createElement('option');
       o.value = i;
-      o.textContent = f.name;
+      o.textContent = p.name + (i === book.active ? '（默认）' : '');
       return o;
     })
   );
-  $('resume-pick').value = String(files.active || 0);
+  $('prof-pick').value = String(index);
+  $('prof-default').hidden = index === book.active;
 }
-$('resume-pick').addEventListener('change', async (e) => {
-  const files = await Vault.loadFiles();
-  files.active = Number(e.target.value);
-  await Vault.saveFiles(files);
+$('prof-pick').addEventListener('change', async (e) => {
+  index = Number(e.target.value);
+  profile = book.list[index].data || {};
+  const { tabProfiles = {} } = await chrome.storage.session.get('tabProfiles');
+  tabProfiles[tab.id] = book.list[index].name;
+  await chrome.storage.session.set({ tabProfiles });
+  renderProfiles();
+  renderCopyList();
+  // 换了资料：把这个页面上已经填的内容按新的这套重填一遍
+  fill(true);
+});
+$('prof-default').addEventListener('click', async () => {
+  book.active = index;
+  await Vault.saveBook(book);
+  renderProfiles();
+});
+
+// —— 自动填写总开关（= 授予 / 撤销访问所有网站的权限）——
+const ALL = ['<all_urls>', '*://*/*'];
+async function renderAuto() {
+  const { origins = [] } = await chrome.permissions.getAll();
+  $('opt-auto').checked = origins.some((o) => ALL.includes(o));
+}
+$('opt-auto').addEventListener('change', async (e) => {
+  // 授权弹窗可能会让这个小窗口关掉；后台会监听权限变化并完成设置
+  if (e.target.checked) await chrome.permissions.request({ origins: ['<all_urls>'] });
+  else {
+    const { origins = [] } = await chrome.permissions.getAll();
+    if (origins.length) await chrome.permissions.remove({ origins });
+  }
+  renderAuto();
 });
 
 // 自动填不上的字段，点一下复制、手动粘贴
@@ -104,7 +105,7 @@ function renderCopyList() {
   );
 }
 
-async function fill() {
+async function fill(forceOverwrite) {
   const result = $('result');
   result.className = 'muted';
   result.style.whiteSpace = 'pre-line';
@@ -113,7 +114,7 @@ async function fill() {
   try {
     const reports = await runFill({
       tabId: tab.id,
-      opts: { overwrite: $('opt-overwrite').checked, fillPassword: $('opt-password').checked },
+      opts: { overwrite: forceOverwrite === true || $('opt-overwrite').checked, fillPassword: $('opt-password').checked },
     });
     const filled = reports.flatMap((r) => r.filled);
     const kept = reports.reduce((n, r) => n + r.kept, 0);
@@ -121,7 +122,7 @@ async function fill() {
     const noData = [...new Set(reports.flatMap((r) => r.noData))];
 
     result.className = filled.length ? 'ok' : 'muted';
-    const lines = [`已填写 ${filled.length} 项（页面上以绿框标出）`];
+    const lines = [`用「${book.list[index].name}」填写了 ${filled.length} 项（页面上以绿框标出）`];
     if (kept) lines.push(`${kept} 项已有内容，未改动`);
     if (unknown) lines.push(`${unknown} 项没认出来或选项里没找到，请手动填写`);
     if (noData.length) lines.push(`资料里还没填：${noData.slice(0, 6).join('、')}${noData.length > 6 ? ' 等' : ''}`);
@@ -141,7 +142,7 @@ $('locked').addEventListener('submit', async (e) => {
   $('pw-msg').textContent = ok ? '' : '密码不对';
   if (ok) refresh();
 });
-$('fill').addEventListener('click', fill);
+$('fill').addEventListener('click', () => fill());
 $('setup').addEventListener('click', () => chrome.runtime.openOptionsPage());
 $('edit').addEventListener('click', () => chrome.runtime.openOptionsPage());
 $('lock').addEventListener('click', async () => {

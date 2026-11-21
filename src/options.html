@@ -48,29 +48,42 @@
 
       <section class="card">
         <h2>自动填写</h2>
-        <p class="muted">默认只有点「一键填写」时才填。对某个网站开启自动填写后，以后一打开它的页面就会直接填好（包括上传简历）。<br>
-          开启方法：在那个网站上点扩展图标，勾选「在此网站自动填写」。只对你信任的招聘网站开启——开启后该网站上任何带「手机」「邮箱」字样的输入框都会被填上。</p>
-        <div id="sites" class="site-list"></div>
+        <p class="muted">打开后，你进入任何网页，扩展都会把认得的表单直接填好（包括账号密码、上传简历和照片），翻到下一步、展开新的段落也会接着填。关闭后只有点「一键填写」时才填。<br>
+          注意：打开期间，任何网页上带「手机」「邮箱」「密码」字样的输入框都会被填上，不投简历时建议关掉。弹窗里也有同一个开关。</p>
         <div class="row">
-          <button id="grant-all">对所有网站开启</button>
-          <button id="revoke-all" class="danger">全部关闭</button>
+          <button id="grant-all" class="primary">打开自动填写</button>
+          <button id="revoke-all" class="danger">关闭自动填写</button>
         </div>
-        <label class="check"><input id="auto-password" type="checkbox"> 自动填写时也填密码框（注册 / 登录页的密码）</label>
+        <div id="sites" class="site-list"></div>
+        <label class="check"><input id="auto-password" type="checkbox"> 自动填写时也填密码框</label>
         <p class="muted">设置了主密码时，每次重启浏览器后要先点一下扩展图标解锁，自动填写才会工作。</p>
       </section>
 
       <section class="card">
         <h2>简历和照片文件</h2>
-        <p class="muted">遇到「上传简历」「个人照片」的上传框时自动传上去。可以放多份简历（比如不同岗位、中英文），选一份作为当前使用的；弹窗里也能随时切换。单个文件不超过 5 MB。</p>
+        <p class="muted">遇到「上传简历」「个人照片」的上传框时自动传上去。可以放多份简历（比如 1121PM.pdf、1120DA.pdf），每套资料方案用哪一份在下面「资料方案」里选。单个文件不超过 5 MB。</p>
         <div id="resumes" class="site-list"></div>
         <div class="row">
           <button id="add-resume">+ 添加简历文件</button>
           <input id="resume-file" type="file" accept=".pdf,.doc,.docx,.txt,.rtf" multiple hidden>
-          <button id="set-photo">选择照片</button>
+          <button id="set-photo">选择 / 更换照片</button>
           <input id="photo-file" type="file" accept=".jpg,.jpeg,.png,.bmp,.gif" hidden>
           <span id="photo-name" class="muted"></span>
           <button id="del-photo" class="link danger" hidden>删除照片</button>
         </div>
+      </section>
+
+      <section class="card">
+        <h2>资料方案</h2>
+        <p class="muted">可以建多套资料（比如 PM 一套、DA 一套），各自有不同的求职意向、经历描述和简历文件。下面编辑的是选中的这一套。自动填写用「默认」方案；某个页面要用另一套时，在弹窗里切换。</p>
+        <div class="row">
+          <select id="prof-pick"></select>
+          <button id="prof-new">复制为新方案</button>
+          <button id="prof-rename">重命名</button>
+          <button id="prof-default">设为默认</button>
+          <button id="prof-del" class="danger">删除</button>
+        </div>
+        <div class="grid"><label class="field"><span>这套资料上传哪份简历</span><select id="prof-resume"></select></label></div>
       </section>
 
       <div id="sections"></div>

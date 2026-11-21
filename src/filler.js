@@ -374,6 +374,7 @@
       } else {
         value = profile[sec.id]?.[field.key];
       }
+      if ((value == null || value === '') && field.fallback) value = field.fallback;
       return { value, label, field };
     }
 
@@ -384,6 +385,11 @@
       for (const c of customs) {
         if (c.keys.some((k) => desc.parts.some((p) => p.includes(k)))) {
           return { value: c.value, label: `自定义 · ${c.keys[0]}`, field: {} };
+        }
+      }
+      for (const sec of S.sections) {
+        for (const field of sec.fields) {
+          if (field.pre && any(field.match) && !(field.not && any(field.not))) return useField(sec, field);
         }
       }
       if (any(S.skip)) return null;
@@ -425,7 +431,7 @@
           for (let field of sec.fields) {
             if (!field.match || !kindOk(field) || !test(field.match) || (field.not && test(field.not))) continue;
             // 「毕业院校所在国家」这种：属于这一段，但其实问的是地点
-            if (sec.repeat && !LOC.includes(field.generic)) {
+            if (sec.repeat && field.anchor) {
               const loc = LOC.find((g) => test(S.generic[g]));
               field = (loc && sec.fields.find((x) => x.generic === loc)) || field;
             }

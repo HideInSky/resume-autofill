@@ -77,7 +77,15 @@
 
     load: () => read('vault'),
     save: (profile) => write('vault', profile),
-    // 文件：{ resumes: [{name,type,size,data(base64)}], active: 0, photo: {...} }
+    // 资料方案（如 PM / DA 各一套）：{ active: 默认方案的下标, list: [{ name, data: 资料, resume: 上传用的简历文件名 }] }
+    // 旧版本只存了一套资料，读出来时自动包成「默认」方案
+    async book() {
+      const raw = await read('vault');
+      if (Array.isArray(raw.list) && raw.list.length) return raw;
+      return { active: 0, list: [{ name: '默认', data: raw, resume: '' }] };
+    },
+    saveBook: (book) => write('vault', book),
+    // 文件：{ resumes: [{name,type,size,data(base64)}], photo: {...} }
     loadFiles: () => read('files'),
     saveFiles: (files) => write('files', files),
 

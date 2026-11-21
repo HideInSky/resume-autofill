@@ -20,6 +20,8 @@
       country: /所在国家|国家|country/,
       province: /省份|province/,
       city: /城市|地点|所在地|city|location/,
+      cert: /证书|certificate/,
+      score: /成绩|分数|score/,
     },
 
     // 用字段自身或外层容器的 name/id/class 判断它属于哪一段（按顺序检查）
@@ -27,6 +29,7 @@
       education: /educat|school|教育/,
       project: /project|项目/,
       work: /work|employ|intern|工作|实习/,
+      language: /language|语言/,
     },
 
     // 上传文件：按上传框旁边的文字判断该传什么
@@ -41,7 +44,7 @@
       {
         id: 'account',
         title: '网申账号',
-        hint: '注册各家网申系统时用的账号。密码默认不会自动填，需要在弹窗里勾选「填写密码框」，或在「自动填写」设置里打开。',
+        hint: '注册 / 登录各家网申系统时用的账号和密码，遇到账号框、密码框（含确认密码）时填入。不想让它填密码，可以在「自动填写」里关掉。',
         fields: [
           f('username', '用户名 / 账号', /用户名|账号|帐号|username|user name|login (name|id)|account name/),
           f('password', '密码', null, { type: 'password' }),
@@ -54,7 +57,7 @@
         fields: [
           f('start', '入学时间', /入学/, { type: 'month', generic: 'start' }),
           f('end', '毕业时间', /毕业时间|毕业日期|毕业年|预计毕业|graduat/, { type: 'month', generic: 'end' }),
-          f('school', '学校', /学校|院校|school|university|college|institution/, { not: NOT_ATTR }),
+          f('school', '学校', /学校|院校|school|university|college|institution/, { not: NOT_ATTR, anchor: true }),
           f('degree', '学历 / 学位', /学历|学位|degree|education level/, {
             type: 'select',
             options: ['', '大专', '本科', '硕士', '博士', '其他'],
@@ -64,6 +67,9 @@
           f('college', '学院 / 院系', /学院|院系|faculty/),
           f('rank', '成绩排名', /排名|rank/, { placeholder: '如 TOP10%' }),
           f('gpa', 'GPA / 绩点', /gpa|绩点|平均分|平均成绩|学业成绩/),
+          f('mode', '学制', /学制|学习形式|培养方式/, { type: 'select', options: ['', '全日制', '非全日制'] }),
+          f('cadre', '是否学生干部', /是否.*学生干部|担任.*学生干部/, { type: 'select', options: YES_NO, not: /级别|名称|职务/ }),
+          f('keyLab', '是否国家重点实验室', /重点实验室/, { type: 'select', options: YES_NO, not: /所在|名称/ }),
           f('country', '学校所在国家', null, { generic: 'country', placeholder: '如 中国 / 美国' }),
           f('province', '学校所在省份 / 州', null, { generic: 'province' }),
           f('city', '学校所在城市', null, { generic: 'city' }),
@@ -79,6 +85,8 @@
         fields: [
           f('position', '应聘职位', /应聘|期望职位|期望岗位|意向职位|意向岗位|求职意向|desired (position|role|title)|applying for/),
           f('salary', '期望薪资', /薪资|薪酬|月薪|年薪|salary|compensation/),
+          f('relocate', '是否接受工作地变更', /工作地变更|工作地点变更|接受.*(调动|外派)|relocat/, { type: 'select', options: YES_NO }),
+          f('acceptArea', '可接受工作地', /可接受工作地/, { placeholder: '如 中国国内各地 / 全球各地' }),
           f('city2', '第二意向城市', /第二意向|第二志愿.*(城市|地)/),
           f('city', '期望城市（第一意向）', /期望城市|意向城市|期望地点|期望工作地|意向工作地|工作意向地|preferred (city|location)/),
           f('available', '最快到岗时间', /到岗|入职时间|可入职|available|earliest start|notice period/),
@@ -95,7 +103,7 @@
         title: '工作 / 实习经历',
         repeat: true,
         fields: [
-          f('company', '公司', /公司|单位|雇主|company|employer|organi[sz]ation/, { not: NOT_ATTR }),
+          f('company', '公司', /公司|单位|雇主|company|employer|organi[sz]ation/, { not: NOT_ATTR, anchor: true }),
           f('title', '职位', /职位|岗位|职务|job title|\btitle\b|position|\brole\b/),
           f('department', '部门', /部门|department|team/),
           f('start', '开始时间', /入职/, { type: 'month', generic: 'start' }),
@@ -121,6 +129,18 @@
             type: 'textarea',
             generic: 'description',
           }),
+        ],
+      },
+      {
+        id: 'language',
+        title: '语言能力（逐项）',
+        hint: '网站把语言拆成「语言 / 熟练程度 / 证书 / 成绩」几栏时用这里；只有一个大文本框时用「其他」里的语言能力。',
+        repeat: true,
+        fields: [
+          f('name', '语言', /语言名称|语种|语言类别/, { placeholder: '如 英语' }),
+          f('level', '熟练程度', /熟练程度|掌握程度|proficien/, { placeholder: '如 熟练 / 精通' }),
+          f('cert', '证书', null, { generic: 'cert', placeholder: '如 英语六级 / 托福 / 雅思' }),
+          f('score', '成绩', null, { generic: 'score' }),
         ],
       },
       {
@@ -169,6 +189,8 @@
         id: 'other',
         title: '其他',
         fields: [
+          // fallback: 资料里没填时用的默认值。pre: 先于「别人的信息一律不填」的规则判断（题目里带「亲属」二字）
+          f('relative', '是否有亲属在应聘公司任职', /(亲属|亲戚|亲友|近亲).*(任职|工作|就职)|relatives?.*(work|employ)/, { type: 'select', options: YES_NO, pre: true, fallback: '否' }),
           f('skills', '专业技能', /技能|特长|skills/, { type: 'textarea' }),
           f('languages', '语言能力', /语言能力|外语|英语水平|language/, { type: 'textarea' }),
           f('certificates', '证书', /证书|资格|certificat|license/, { type: 'textarea' }),

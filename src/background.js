@@ -37,11 +37,20 @@ async function autofill(sender) {
   const reports = await runFill({
     tabId,
     frameIds: [sender.frameId],
-    opts: { auto: true, overwrite: false, fillPassword: !!settings.autoPassword },
+    opts: { auto: true, overwrite: false, fillPassword: settings.autoPassword !== false },
   });
   const n = reports.reduce((sum, r) => sum + r.filled.length, 0);
   if (n) badge(tabId, String(n), '#15803d');
 }
+
+// 标签页关掉后，忘掉它单独选的资料方案
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  const { tabProfiles = {} } = await chrome.storage.session.get('tabProfiles');
+  if (tabId in tabProfiles) {
+    delete tabProfiles[tabId];
+    await chrome.storage.session.set({ tabProfiles });
+  }
+});
 
 chrome.runtime.onMessage.addListener((msg, sender) => {
   if (msg && msg.type === 'autofill' && sender.tab) autofill(sender).catch((e) => console.warn('autofill', e));

@@ -1,7 +1,9 @@
 const $ = (id) => document.getElementById(id);
 const SECTIONS = RESUME_SCHEMA.sections;
 const MAX_FILE = 5 * 1024 * 1024;
-let profile = {};
+let book = { active: 0, list: [] }; // 全部资料方案
+let cur = null; // 正在编辑第几套
+let profile = {}; // = book.list[cur].data
 let files = {};
 
 const el = (tag, props = {}, children = []) => {
@@ -31,7 +33,7 @@ async function guarded(fn) {
 }
 const saveNow = () => {
   clearTimeout(saveTimer);
-  return guarded(() => Vault.save(profile));
+  return guarded(() => Vault.saveBook(book));
 };
 const queueSave = () => {
   clearTimeout(saveTimer);
@@ -45,7 +47,7 @@ function control(field, value, onInput) {
     input = el('textarea', { value: value || '' });
   } else if (field.type === 'select') {
     input = el('select', {}, field.options.map((o) => el('option', { value: o, textContent: o || '（未填）' })));
-    input.value = value || '';
+    input.value = value || field.fallback || '';
   } else {
     input = el('input', { type: field.type || 'text', value: value || '', autocomplete: 'off', placeholder: field.placeholder || '' });
   }
@@ -119,7 +121,7 @@ function renderSection(sec) {
 
 function renderEditor() {
   $('sections').replaceChildren(
-    ...['basic', 'account', 'intent', 'education', 'work', 'project', 'other', 'custom'].map((id) =>
+    ...['basic', 'account', 'intent', 'education', 'work', 'project', 'language', 'other', 'custom'].map((id) =>
       renderSection(SECTIONS.find((s) => s.id === id))
     )
   );
@@ -135,23 +137,16 @@ async function readFile(file) {
 
 function renderFiles() {
   const list = files.resumes || [];
-  if (files.active >= list.length) files.active = 0;
   $('resumes').replaceChildren(
     ...list.map((f, i) => {
-      const pick = el('input', { type: 'radio', name: 'active-resume', checked: i === (files.active || 0) });
-      pick.addEventListener('change', () => {
-        files.active = i;
-        saveFiles();
-      });
       const del = el('button', { className: 'link danger', textContent: '删除' });
       del.addEventListener('click', () => {
         list.splice(i, 1);
-        if ((files.active || 0) >= i && files.active > 0) files.active--;
         saveFiles();
         renderFiles();
       });
       return el('div', { className: 'site' }, [
-        el('label', { className: 'check' }, [pick, el('span', { textContent: `${f.name}（${kb(f.size)}）` })]),
+        el('span', { textContent: `${f.name}（${kb(f.size)}）` }),
         del,
       ]);
     })
@@ -159,6 +154,7 @@ function renderFiles() {
   if (!list.length) $('resumes').append(el('span', { className: 'muted', textContent: '还没有简历文件。' }));
   $('photo-name').textContent = files.photo ? `照片：${files.photo.name}（${kb(files.photo.size)}）` : '还没有照片。';
   $('del-photo').hidden = !files.photo;
+  renderProfiles();
 }
 
 $('add-resume').addEventListener('click', () => $('resume-file').click());
@@ -190,6 +186,67 @@ $('del-photo').addEventListener('click', () => {
   renderFiles();
 });
 
+// —— 资料方案（PM / DA …）——
+function renderProfiles() {
+  if (!book.list.length) return;
+  $('prof-pick').replaceChildren(
+    ...book.list.map((p, i) => el('option', { value: i, textContent: p.name + (i === book.active ? '（默认）' : '') }))
+  );
+  $('prof-pick').value = String(cur);
+  const list = files.resumes || [];
+  $('prof-resume').replaceChildren(
+    el('option', { value: '', textContent: list.length ? `（第一份：${list[0].name}）` : '（还没有简历文件）' }),
+    ...list.map((f) => el('option', { value: f.name, textContent: f.name }))
+  );
+  const want = book.list[cur].resume;
+  $('prof-resume').value = list.some((f) => f.name === want) ? want : '';
+  $('prof-del').hidden = book.list.length < 2;
+  $('prof-default').hidden = cur === book.active;
+}
+function switchTo(i) {
+  cur = i;
+  book.list[cur].data ||= {};
+  profile = book.list[cur].data;
+  renderEditor();
+  renderProfiles();
+}
+$('prof-pick').addEventListener('change', async (e) => {
+  await saveNow();
+  switchTo(Number(e.target.value));
+});
+$('prof-new').addEventListener('click', async () => {
+  const name = (prompt('新方案的名字（如 PM、DA）。内容先复制当前这套，再改不一样的地方。') || '').trim();
+  if (!name) return;
+  if (book.list.some((p) => p.name === name)) return flash('已经有同名的方案了', 'err');
+  book.list.push({ name, data: structuredClone(profile), resume: book.list[cur].resume || '' });
+  switchTo(book.list.length - 1);
+  saveNow();
+});
+$('prof-rename').addEventListener('click', () => {
+  const name = (prompt('新名字', book.list[cur].name) || '').trim();
+  if (!name || book.list.some((p, i) => i !== cur && p.name === name)) return;
+  book.list[cur].name = name;
+  renderProfiles();
+  saveNow();
+});
+$('prof-default').addEventListener('click', () => {
+  book.active = cur;
+  renderProfiles();
+  saveNow();
+});
+$('prof-del').addEventListener('click', () => {
+  if (!confirm(`确定删除「${book.list[cur].name}」这套资料吗？`)) return;
+  book.list.splice(cur, 1);
+  if (book.active === cur) book.active = 0;
+  else if (book.active > cur) book.active--;
+  switchTo(0);
+  saveNow();
+});
+$('prof-resume').addEventListener('change', (e) => {
+  book.list[cur].resume = e.target.value;
+  saveNow();
+});
+
 // —— 自动填写的网站 ——
 async function renderSites() {
   const { origins = [] } = await chrome.permissions.getAll();
@@ -200,15 +257,15 @@ async function renderSites() {
         await chrome.permissions.remove({ origins: [origin] });
         renderSites();
       });
-      const name = origin === '<all_urls>' || origin === '*://*/*' ? '所有网站' : origin.replace(/\/\*$/, '');
+      const name = origin === '<all_urls>' || origin === '*://*/*' ? '已打开：所有网站' : origin.replace(/\/\*$/, '');
       return el('div', { className: 'site' }, [el('span', { textContent: name }), del]);
     })
   );
-  if (!origins.length) $('sites').append(el('span', { className: 'muted', textContent: '还没有对任何网站开启自动填写。' }));
+  if (!origins.length) $('sites').append(el('span', { className: 'muted', textContent: '自动填写现在是关闭的。' }));
   $('revoke-all').hidden = !origins.length;
+  $('grant-all').hidden = origins.includes('<all_urls>') || origins.includes('*://*/*');
 }
 $('grant-all').addEventListener('click', async () => {
-  if (!confirm('开启后，你打开的每一个网页上的表单都会被自动填写。确定对所有网站开启吗？')) return;
   await chrome.permissions.request({ origins: ['<all_urls>'] });
   renderSites();
 });
@@ -238,10 +295,13 @@ async function refresh() {
   $('pw-set').textContent = encrypted ? '修改主密码' : '设置主密码';
   $('pw-remove').hidden = !encrypted;
   $('lock-now').hidden = !encrypted;
-  profile = await Vault.load();
+  book = await Vault.book();
+  if (cur == null || cur >= book.list.length) cur = Math.min(book.active || 0, book.list.length - 1);
+  book.list[cur].data ||= {};
+  profile = book.list[cur].data;
   files = await Vault.loadFiles();
   const { settings = {} } = await chrome.storage.local.get('settings');
-  $('auto-password').checked = !!settings.autoPassword;
+  $('auto-password').checked = settings.autoPassword !== false;
   renderEditor();
   renderFiles();
   renderSites();
@@ -303,8 +363,8 @@ $('import-file').addEventListener('change', async (e) => {
   try {
     const data = JSON.parse(await file.text());
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('格式不对');
-    if (!confirm('导入会覆盖当前的全部资料，确定吗？')) return;
-    profile = data;
+    if (!confirm(`导入会覆盖「${book.list[cur].name}」这套资料，确定吗？`)) return;
+    profile = book.list[cur].data = data;
     renderEditor();
     await saveNow();
   } catch (err) {

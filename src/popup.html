@@ -23,9 +23,9 @@
   <div id="ready" class="stack" hidden>
     <button id="fill" class="primary">一键填写当前页面</button>
     <label class="check"><input id="opt-overwrite" type="checkbox"> 覆盖已有内容</label>
-    <label class="check"><input id="opt-password" type="checkbox"> 填写密码框（仅在你信任的网站勾选）</label>
-    <label id="site-row" class="check" hidden><input id="opt-site" type="checkbox"> <span id="site-label">在此网站自动填写</span></label>
-    <label id="resume-row" class="field" hidden><span>上传用的简历</span><select id="resume-pick"></select></label>
+    <label class="check"><input id="opt-password" type="checkbox" checked> 填写密码框</label>
+    <label class="check"><input id="opt-auto" type="checkbox"> 自动填写：打开任何网页都直接填</label>
+    <div id="prof-row" class="field" hidden><span>这个页面用哪套资料</span><div class="pw"><select id="prof-pick"></select><button id="prof-default" type="button">设为默认</button></div></div>
     <div id="result" class="muted"></div>
     <details>
       <summary>没填上？点击复制</summary>
