@@ -32,7 +32,7 @@ async function autofill(sender) {
   const tabId = sender.tab.id;
   const state = await Vault.state();
   if (state === 'empty') return;
-  if (state === 'locked') return badge(tabId, '锁', '#b45309'); // 需要先点图标输入主密码
+  if (state === 'locked') return badge(tabId, '锁', '#b45309'); // 以前设置过加密：需要先点图标解锁
   const { settings = {} } = await chrome.storage.local.get('settings');
   const reports = await runFill({
     tabId,

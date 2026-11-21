@@ -38,6 +38,7 @@
     ['身份证', '居民身份证', 'id card', 'identity card', 'national id'],
     ['护照', 'passport'],
     ['中国', 'china', '中国大陆', 'prc'],
+    ['全国各地', '中国国内各地', '全国', '不限'],
     ['中国香港', '香港', 'hong kong'],
     ['美国', 'united states', 'usa', 'us', 'united states of america', '美利坚合众国'],
     ['英国', 'united kingdom', 'uk', 'britain', 'great britain'],
@@ -374,7 +375,9 @@
       } else {
         value = profile[sec.id]?.[field.key];
       }
-      if ((value == null || value === '') && field.fallback) value = field.fallback;
+      // 默认值只用在资料里确实有的那一段经历上
+      const exists = !sec.repeat || !!profile[sec.id]?.[state.idx[sec.id]];
+      if ((value == null || value === '') && field.fallback && exists) value = field.fallback;
       return { value, label, field };
     }
 

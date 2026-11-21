@@ -150,7 +150,7 @@ app.append(
     item('出生日期', 'birthday', date('b_birth', '请选择', true)),
     phoneCol,
     item('电子邮箱', 'email', text('b_email', '用于接收面试及录用通知', 'email')),
-    item('籍贯', 'nationality', select('b_home', ['上海', '江苏', '江西', '浙江'])),
+    item('籍贯', 'nationality', select('b_home', ['上海', '浙江', '江西', '湖南'])),
     item('自我评价', 'selfEvaluation', area('b_intro')),
     item('附件简历', 'attachmentId', attach),
     hiddenLater),
@@ -182,17 +182,17 @@ app.append(
     item('证书', 'certificateName', select('l_cert', ['英语四级', '英语六级'])),
     item('成绩', 'certificateScore', text('l_score'))),
   moduleBox('otherModule', '其他',
-    item('是否有亲属正在或曾在华为任职', 'relativeWorkingHw', radios('o_relative'))),
+    item('是否有亲属正在或曾在本公司任职', 'relativeWorking', radios('o_relative'))),
 );
 
 // —— 自检 ——
 const SAMPLE = {
-  basic: { name: '张三', gender: '男', nationality: '中国', ethnicity: '汉', idType: '身份证', idNumber: '110101200001011234',
-           phoneCode: '+86', phone: '13800000000', email: 'zhangsan@example.com', hometown: '江苏省', wechat: 'zs_wx' },
-  intent: { city: '杭州市', city2: '南京', adjust: '是', relocate: '是', acceptArea: '中国国内各地' },
+  basic: { name: '张三', gender: '男', idNumber: '110101200001011234',
+           phone: '13800000000', email: 'zhangsan@example.com', hometown: '浙江省', wechat: 'zs_wx' },
+  intent: { city: '杭州市', city2: '南京' },
   education: [
     { start: '2024-09', end: '2026-05', country: '美国', province: 'Wisconsin', city: 'Madison', school: '示例大学麦迪逊分校',
-      college: '统计系', major: '数据科学', degree: '硕士', rank: 'TOP10%', mode: '全日制', cadre: '否', keyLab: '否' },
+      college: '统计系', major: '数据科学', degree: '硕士', rank: 'TOP10%' },
     { start: '2019-09', school: '样例学院', degree: '本科' },
   ],
   work: [{ company: '示例科技', start: '2025-06', end: '2025-08', department: '数据部', title: '数据分析实习生', description: '负责报表与归因分析' }],
@@ -221,7 +221,7 @@ const EXPECT = [
   ['性别', picked('b_gender'), '男'], ['证件签发国家', picked('b_issue'), '中国大陆'], ['民族', picked('b_ethnic'), '汉族'],
   ['证件类型', picked('b_idtype'), '中国居民身份证'], ['证件号码', val('b_idno'), '110101200001011234'],
   ['出生日期(禁用,不动)', val('b_birth'), ''], ['区号', picked('b_code'), '中国(+86)'], ['手机号', val('b_phone'), '13800000000'],
-  ['邮箱', val('b_email'), 'zhangsan@example.com'], ['籍贯', picked('b_home'), '江苏'], ['自我评价', val('b_intro'), '这是一段自我评价。'],
+  ['邮箱', val('b_email'), 'zhangsan@example.com'], ['籍贯', picked('b_home'), '浙江'], ['自我评价', val('b_intro'), '这是一段自我评价。'],
   ['工作地变更', picked('i_change'), '1'], ['可接受工作地', picked('i_area'), '中国国内各地'], ['第一意向', picked('i_city1'), '杭州'], ['第二意向', picked('i_city2'), '南京'],
   ['服从调配', picked('i_adjust'), '1'],
   ['入学时间1', val('e1_start'), '2024-09-01'], ['毕业时间1', val('e1_end'), '2026-05-01'],

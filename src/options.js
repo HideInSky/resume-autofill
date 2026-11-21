@@ -41,17 +41,28 @@ const queueSave = () => {
 };
 
 // —— 资料表单 ——
+// 颜色：红 = 必填还没填；蓝 = 用的是默认值；灰 = 已填
 function control(field, value, onInput) {
   let input;
+  let val = value || '';
   if (field.type === 'textarea') {
-    input = el('textarea', { value: value || '' });
+    input = el('textarea');
   } else if (field.type === 'select') {
     input = el('select', {}, field.options.map((o) => el('option', { value: o, textContent: o || '（未填）' })));
-    input.value = value || field.fallback || '';
   } else {
-    input = el('input', { type: field.type || 'text', value: value || '', autocomplete: 'off', placeholder: field.placeholder || '' });
+    input = el('input', { type: field.type || 'text', autocomplete: 'off', placeholder: field.placeholder || '' });
   }
-  input.addEventListener('input', () => onInput(input.value));
+  input.value = val || field.fallback || '';
+  const paint = () => {
+    input.classList.toggle('dflt', !val && !!field.fallback && input.value === field.fallback);
+    input.classList.toggle('need', !val && !!field.req && !field.fallback);
+  };
+  paint();
+  input.addEventListener('input', () => {
+    val = input.value;
+    onInput(val);
+    paint();
+  });
   let body = input;
   if (field.type === 'password') {
     const toggle = el('button', { type: 'button', textContent: '显示' });
@@ -61,23 +72,119 @@ function control(field, value, onInput) {
     });
     body = el('div', { className: 'pw' }, [input, toggle]);
   }
-  return el('label', { className: 'field' + (field.type === 'textarea' ? ' wide' : '') }, [
-    el('span', { textContent: field.label }),
-    body,
-  ]);
+  const title = el('span', { textContent: field.label });
+  if (field.req) title.append(el('b', { className: 'req', textContent: ' *' }));
+  return el('label', { className: 'field' + (field.type === 'textarea' ? ' wide' : '') }, [title, body]);
+}
+
+// 期望城市：三层，每层最多 3 个，可以拖动换层 / 换顺序。填表时从上到下、从左到右依次用。
+const TIER_NAMES = ['第一层（最想去）', '第二层', '第三层'];
+const DEFAULT_CITY = '全国各地';
+function tiersControl(field, data) {
+  if (!Array.isArray(data.cities)) data.cities = [[data.city].filter(Boolean), [data.city2].filter(Boolean), [DEFAULT_CITY]];
+  const tiers = data.cities;
+  while (tiers.length < 3) tiers.push([]);
+  const wrap = el('div', { className: 'field wide' });
+  let drag = null;
+  const changed = () => {
+    queueSave();
+    render();
+  };
+  const move = (t, at) => {
+    if (!drag) return;
+    const same = drag.t === t;
+    if (!same && tiers[t].length >= 3) return flash('每层最多 3 个城市', 'err');
+    const [city] = tiers[drag.t].splice(drag.i, 1);
+    if (at == null || at > tiers[t].length) at = tiers[t].length;
+    tiers[t].splice(same && at > drag.i ? at - 1 : at, 0, city);
+    drag = null;
+    changed();
+  };
+  function render() {
+    const title = el('span', { textContent: field.label }, [el('b', { className: 'req', textContent: ' *' })]);
+    const rows = tiers.map((list, t) => {
+      const row = el('div', { className: 'tier' + (t === 0 && !list.length ? ' need' : '') }, [el('b', { className: 'tier-name', textContent: TIER_NAMES[t] })]);
+      row.addEventListener('dragover', (e) => e.preventDefault());
+      row.addEventListener('drop', (e) => {
+        e.preventDefault();
+        move(t, null);
+      });
+      list.forEach((city, i) => {
+        const del = el('button', { type: 'button', className: 'link', textContent: '×', title: '删除' });
+        del.addEventListener('click', () => {
+          list.splice(i, 1);
+          changed();
+        });
+        const chip = el('span', { className: 'chip' + (city === DEFAULT_CITY ? ' dflt' : ''), draggable: true }, [city + ' ', del]);
+        chip.addEventListener('dragstart', () => (drag = { t, i }));
+        chip.addEventListener('drop', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          move(t, i);
+        });
+        row.append(chip);
+      });
+      if (!list.length) row.append(el('span', { className: 'muted', textContent: t === 0 ? '还没有城市，在下面添加' : '（空）拖到这里' }));
+      return row;
+    });
+    const input = el('input', { placeholder: '输入城市后回车，如 上海', autocomplete: 'off' });
+    const add = () => {
+      const city = input.value.trim();
+      if (!city) return;
+      const t = tiers.findIndex((l) => l.length < 3);
+      if (t < 0) return flash('三层都满了，先删掉一个', 'err');
+      tiers[t].push(city);
+      changed();
+    };
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        add();
+      }
+    });
+    const btn = el('button', { type: 'button', textContent: '添加' });
+    btn.addEventListener('click', add);
+    wrap.replaceChildren(
+      title,
+      ...rows,
+      el('div', { className: 'row' }, [input, btn]),
+      el('span', { className: 'muted', textContent: '拖动城市可以换层或换顺序。网站问第一 / 第二 / 第三意向城市时，按从上到下、从左到右的顺序依次填。' })
+    );
+  }
+  render();
+  return wrap;
 }
 
 function grid(sec, data) {
   return el(
     'div',
     { className: 'grid' },
-    sec.fields.map((f) =>
-      control(f, data[f.key], (v) => {
-        data[f.key] = v;
-        queueSave();
-      })
-    )
+    sec.fields
+      .filter((f) => !f.hidden)
+      .map((f) =>
+        f.type === 'tiers'
+          ? tiersControl(f, data)
+          : control(f, data[f.key], (v) => {
+              data[f.key] = v;
+              queueSave();
+            })
+      )
   );
+}
+
+// 还有多少必填项没填（红框的个数）
+function missingCount() {
+  let n = 0;
+  for (const sec of SECTIONS) {
+    const items = sec.repeat ? profile[sec.id] || [] : [profile[sec.id] || {}];
+    for (const item of items) {
+      for (const f of sec.fields) {
+        if (!f.req || f.fallback) continue;
+        if (f.type === 'tiers' ? !(item.cities && item.cities[0] && item.cities[0].length) : !item[f.key]) n++;
+      }
+    }
+  }
+  return n;
 }
 
 function renderSection(sec) {
@@ -186,7 +293,7 @@ $('del-photo').addEventListener('click', () => {
   renderFiles();
 });
 
-// —— 资料方案（PM / DA …）——
+// —— 资料方案（不同岗位各一套）——
 function renderProfiles() {
   if (!book.list.length) return;
   $('prof-pick').replaceChildren(
@@ -215,7 +322,7 @@ $('prof-pick').addEventListener('change', async (e) => {
   switchTo(Number(e.target.value));
 });
 $('prof-new').addEventListener('click', async () => {
-  const name = (prompt('新方案的名字（如 PM、DA）。内容先复制当前这套，再改不一样的地方。') || '').trim();
+  const name = (prompt('新方案的名字（比如岗位类别）。内容先复制当前这套，再改不一样的地方。') || '').trim();
   if (!name) return;
   if (book.list.some((p) => p.name === name)) return flash('已经有同名的方案了', 'err');
   book.list.push({ name, data: structuredClone(profile), resume: book.list[cur].resume || '' });
@@ -245,6 +352,115 @@ $('prof-del').addEventListener('click', () => {
 $('prof-resume').addEventListener('change', (e) => {
   book.list[cur].resume = e.target.value;
   saveNow();
+});
+
+// —— 让 AI 填：通用格式（提示词和模板都从字段定义生成，新增字段会自动带上）——
+const aiField = (f) => !f.hidden && f.type !== 'tiers';
+const AI_SECTIONS = () => SECTIONS.filter((s) => s.id !== 'account' && s.id !== 'custom');
+function buildTemplate() {
+  const out = {};
+  for (const sec of AI_SECTIONS()) {
+    const blank = Object.fromEntries(sec.fields.filter(aiField).map((f) => [f.key, '']));
+    out[sec.id] = sec.repeat ? [blank] : blank;
+  }
+  return out;
+}
+function buildPrompt() {
+  const lines = [
+    '请阅读我提供的简历（PDF 或文字），把信息填进下面的 JSON 模板。只输出一个 JSON 代码块，不要输出其他文字。',
+    '',
+    '规则：',
+    '1. 只填简历里明确写了的内容；没有的保持空字符串 ""，不要编造、不要猜。唯一的例外是标了「可推断」的字段，按说明从姓名推出来。',
+    '2. 日期：年月写成 YYYY-MM，完整日期写成 YYYY-MM-DD；「至今」留空。',
+    '3. 标了「数组」的段落，每段经历一个对象，按时间从近到远排列，字段和模板里的示例对象相同；没有的给空数组 []。',
+    '4. 标了「只能填」的字段，只能填给出的选项之一，否则留空。',
+    '5. 经历描述保留原文要点，多条用换行分隔，不要改写、不要加 Markdown 符号。',
+    '6. 键名必须和模板完全一致，不要增删键。',
+    '',
+    '字段说明：',
+  ];
+  for (const sec of AI_SECTIONS()) {
+    lines.push(`[${sec.id}] ${sec.title}${sec.repeat ? '（数组）' : ''}`);
+    for (const f of sec.fields.filter(aiField)) {
+      let note = f.label;
+      if (f.ai) note += `（可推断：${f.ai}）`;
+      if (f.type === 'select') note += `（只能填：${f.options.filter(Boolean).join(' / ')}）`;
+      else if (f.type === 'month') note += '（YYYY-MM）';
+      else if (f.type === 'date') note += '（YYYY-MM-DD）';
+      else if (f.placeholder) note += `（${f.placeholder}）`;
+      lines.push(`  ${f.key}: ${note}`);
+    }
+  }
+  lines.push('', 'JSON 模板：', '```json', JSON.stringify(buildTemplate(), null, 2), '```');
+  return lines.join('\n');
+}
+// 把「2024.9」「2024年9月」「2024/09/01」这类写法统一成 YYYY-MM(-DD)
+function normDate(v, type) {
+  const m = /(\d{4})\s*[-./年]\s*(\d{1,2})(?:\s*[-./月]\s*(\d{1,2}))?/.exec(v);
+  if (!m) return /^\d{4}$/.test(v.trim()) && type === 'month' ? '' : v;
+  const ym = `${m[1]}-${m[2].padStart(2, '0')}`;
+  return type === 'date' ? `${ym}-${(m[3] || '01').padStart(2, '0')}` : ym;
+}
+function cleanItem(sec, raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const f of sec.fields.filter(aiField)) {
+    let v = raw[f.key];
+    if (v == null || typeof v === 'object') continue;
+    v = String(v).trim();
+    if (!v) continue;
+    if (f.type === 'month' || f.type === 'date') v = normDate(v, f.type);
+    if (f.type === 'select' && !f.options.includes(v)) continue;
+    if (v) out[f.key] = v;
+  }
+  return out;
+}
+function importAI(text, replace) {
+  const a = text.indexOf('{');
+  const b = text.lastIndexOf('}');
+  if (a < 0 || b <= a) throw new Error('没找到 JSON 内容，请把 AI 返回的整段都粘贴进来');
+  let data;
+  try {
+    data = JSON.parse(text.slice(a, b + 1));
+  } catch {
+    throw new Error('内容不是合法的 JSON（可能没复制完整），让 AI 重新输出一次');
+  }
+  let count = 0;
+  for (const sec of AI_SECTIONS()) {
+    const raw = data[sec.id];
+    if (sec.repeat) {
+      const items = (Array.isArray(raw) ? raw : []).map((r) => cleanItem(sec, r)).filter((o) => Object.keys(o).length);
+      if (items.length || replace) profile[sec.id] = items;
+      count += items.reduce((n, o) => n + Object.keys(o).length, 0);
+    } else {
+      const item = cleanItem(sec, raw);
+      profile[sec.id] = { ...(profile[sec.id] || {}), ...item };
+      count += Object.keys(item).length;
+    }
+  }
+  return count;
+}
+$('ai-prompt').addEventListener('click', async () => {
+  await navigator.clipboard.writeText(buildPrompt());
+  flash('提示词已复制，去 AI 那边粘贴 ✓');
+});
+$('ai-template').addEventListener('click', () => {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(buildTemplate(), null, 2)], { type: 'application/json' }));
+  el('a', { href: url, download: 'resume-autofill-template.json' }).click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+$('ai-import').addEventListener('click', async () => {
+  try {
+    const n = importAI($('ai-text').value, $('ai-replace').checked);
+    if (!n) throw new Error('里面没有可导入的内容');
+    renderEditor();
+    await saveNow();
+    $('ai-text').value = '';
+    const miss = missingCount();
+    flash(`已导入 ${n} 项到「${book.list[cur].name}」。` + (miss ? `还有 ${miss} 个必填项没填，往下找红框` : '往下检查一遍'), miss ? 'err' : 'ok');
+  } catch (err) {
+    flash(err.message, 'err');
+  }
 });
 
 // —— 自动填写的网站 ——
@@ -289,12 +505,7 @@ async function refresh() {
   if (locked) return;
 
   const encrypted = state === 'unlocked';
-  $('sec-state').textContent = encrypted
-    ? '🔒 已用主密码加密（AES-256）。关闭浏览器后自动锁定。'
-    : '⚠️ 尚未设置主密码：资料以明文保存在本机浏览器中。建议设置主密码，尤其是在保存了网申密码或身份证号时。';
-  $('pw-set').textContent = encrypted ? '修改主密码' : '设置主密码';
   $('pw-remove').hidden = !encrypted;
-  $('lock-now').hidden = !encrypted;
   book = await Vault.book();
   if (cur == null || cur >= book.list.length) cur = Math.min(book.active || 0, book.list.length - 1);
   book.list[cur].data ||= {};
@@ -308,7 +519,7 @@ async function refresh() {
 }
 
 async function wipe() {
-  if (!confirm('确定清空全部资料、文件和主密码吗？此操作无法撤销。')) return;
+  if (!confirm('确定清空全部资料和文件吗？此操作无法撤销。')) return;
   await Vault.wipe();
   location.reload();
 }
@@ -321,31 +532,10 @@ $('unlock-form').addEventListener('submit', async (e) => {
   if (ok) refresh();
 });
 
-$('pw-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const msg = $('pw-msg');
-  const a = $('pw1').value;
-  msg.className = 'err';
-  if (a.length < 8) return (msg.textContent = '主密码至少 8 位。');
-  if (a !== $('pw2').value) return (msg.textContent = '两次输入不一致。');
-  await saveNow();
-  await Vault.setPassword(a);
-  $('pw1').value = $('pw2').value = '';
-  msg.className = 'ok';
-  msg.textContent = '主密码已设置。请牢记——忘记后无法找回。';
-  refresh();
-});
-
 $('pw-remove').addEventListener('click', async () => {
-  if (!confirm('取消加密后资料将以明文保存，确定吗？')) return;
+  if (!confirm('取消加密后就不用再输入密码了，资料以明文保存在本机。确定吗？')) return;
   await saveNow();
   await Vault.removePassword();
-  refresh();
-});
-
-$('lock-now').addEventListener('click', async () => {
-  await saveNow();
-  await Vault.lock();
   refresh();
 });
 

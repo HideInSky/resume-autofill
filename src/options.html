@@ -10,62 +10,69 @@
   <div class="page">
     <header>
       <h1>简历自动填 · 我的资料</h1>
-      <span class="muted">所有内容只保存在这台电脑的浏览器里，扩展不联网。</span>
+      <span class="muted">所有内容只保存在这台电脑的浏览器里，扩展不联网。按从上到下的顺序做一遍即可。</span>
     </header>
 
-    <!-- 已加密且未解锁 -->
+    <!-- 只有以前设置过加密、且还没解锁时才会出现 -->
     <section id="locked" class="card" hidden>
       <h2>已锁定</h2>
-      <p class="muted">输入主密码解锁后才能查看和编辑资料。</p>
+      <p class="muted">这份资料以前设置过加密，输入当时的密码后才能查看。解锁后可以在页面最下面取消加密。</p>
       <form id="unlock-form" class="row">
-        <input id="unlock-pw" type="password" placeholder="主密码" autocomplete="off">
+        <input id="unlock-pw" type="password" placeholder="当时设置的密码" autocomplete="off">
         <button class="primary">解锁</button>
         <span id="unlock-msg" class="err"></span>
       </form>
-      <p class="muted">忘记主密码无法找回，只能<button id="wipe-locked" class="link danger">清空全部数据</button>后重新填写。</p>
+      <p class="muted">忘记了无法找回，只能<button id="wipe-locked" class="link danger">清空全部数据</button>后重新填写。</p>
     </section>
 
     <main id="editor" hidden>
       <section class="card">
-        <h2>安全与数据</h2>
-        <p id="sec-state" class="muted"></p>
-        <form id="pw-form" class="row">
-          <input id="pw1" type="password" placeholder="新主密码（至少 8 位）" autocomplete="new-password">
-          <input id="pw2" type="password" placeholder="再输一次" autocomplete="new-password">
-          <button id="pw-set">设置主密码</button>
-          <button id="pw-remove" type="button" class="danger" hidden>取消加密</button>
-          <button id="lock-now" type="button" hidden>立即锁定</button>
-        </form>
-        <p id="pw-msg" class="muted"></p>
+        <h2>正在编辑哪套资料</h2>
+        <p class="muted">只投一类岗位的话，用默认这一套就行，直接看第 1 步。要投几类不同的岗位（经历描述、简历文件不一样），可以「复制为新方案」各建一套。下面所有步骤编辑的都是这里选中的这一套。</p>
         <div class="row">
-          <button id="export">导出备份 (JSON)</button>
-          <button id="import">导入备份</button>
-          <input id="import-file" type="file" accept="application/json,.json" hidden>
-          <button id="wipe" class="danger">清空全部数据</button>
+          <select id="prof-pick"></select>
+          <button id="prof-new">复制为新方案</button>
+          <button id="prof-rename">重命名</button>
+          <button id="prof-default">设为默认</button>
+          <button id="prof-del" class="danger">删除</button>
         </div>
-        <p class="muted">导出的备份是<b>明文</b>文件（不含简历和照片文件），请自己保管好。</p>
       </section>
 
       <section class="card">
-        <h2>自动填写</h2>
-        <p class="muted">打开后，你进入任何网页，扩展都会把认得的表单直接填好（包括账号密码、上传简历和照片），翻到下一步、展开新的段落也会接着填。关闭后只有点「一键填写」时才填。<br>
-          注意：打开期间，任何网页上带「手机」「邮箱」「密码」字样的输入框都会被填上，不投简历时建议关掉。弹窗里也有同一个开关。</p>
+        <h2>第 1 步　把简历内容导进来（可跳过，直接手填第 2 步）</h2>
+        <p class="muted">让 AI 读你的简历，省得自己一项项复制粘贴。扩展本身不联网，简历由你自己交给 AI：</p>
+        <ol class="muted steps">
+          <li>点「复制提示词」。</li>
+          <li>打开 ChatGPT 或 Claude，上传简历 PDF，把提示词粘贴进去发送。</li>
+          <li>把它返回的那段内容整段粘贴到下面的框里，点「导入」。</li>
+        </ol>
         <div class="row">
-          <button id="grant-all" class="primary">打开自动填写</button>
-          <button id="revoke-all" class="danger">关闭自动填写</button>
+          <button id="ai-prompt" class="primary">复制提示词</button>
         </div>
-        <div id="sites" class="site-list"></div>
-        <label class="check"><input id="auto-password" type="checkbox"> 自动填写时也填密码框</label>
-        <p class="muted">设置了主密码时，每次重启浏览器后要先点一下扩展图标解锁，自动填写才会工作。</p>
+        <textarea id="ai-text" class="ai-text" placeholder="把 AI 返回的内容粘贴到这里"></textarea>
+        <div class="row">
+          <button id="ai-import" class="primary">导入</button>
+          <label class="check"><input id="ai-replace" type="checkbox"> 先清空这套资料里已有的经历再导入</label>
+        </div>
+        <p class="muted">提示词里只有字段说明和一份空白模板，不包含你的任何个人信息。</p>
       </section>
 
       <section class="card">
-        <h2>简历和照片文件</h2>
-        <p class="muted">遇到「上传简历」「个人照片」的上传框时自动传上去。可以放多份简历（比如 1121PM.pdf、1120DA.pdf），每套资料方案用哪一份在下面「资料方案」里选。单个文件不超过 5 MB。</p>
+        <h2>第 2 步　检查并补全资料</h2>
+        <p class="muted">往下逐块看一遍，改动自动保存。带 <b class="req">*</b> 的是必填。<br><span class="key need">红框</span> 必填但还没填　<span class="key dflt">蓝框</span> 是替你填的默认值，不对就改　<span class="key">灰框</span> 已填好</p>
+      </section>
+      <div id="sections"></div>
+
+      <section class="card">
+        <h2>第 3 步　添加简历文件和照片</h2>
+        <p class="muted">遇到「上传简历」「个人照片」的上传框时自动传上去。可以放多份简历文件，再选这套资料上传哪一份。单个文件不超过 5 MB。</p>
         <div id="resumes" class="site-list"></div>
         <div class="row">
           <button id="add-resume">+ 添加简历文件</button>
           <input id="resume-file" type="file" accept=".pdf,.doc,.docx,.txt,.rtf" multiple hidden>
+        </div>
+        <div class="grid"><label class="field"><span>这套资料上传哪份简历</span><select id="prof-resume"></select></label></div>
+        <div class="row">
           <button id="set-photo">选择 / 更换照片</button>
           <input id="photo-file" type="file" accept=".jpg,.jpeg,.png,.bmp,.gif" hidden>
           <span id="photo-name" class="muted"></span>
@@ -74,19 +81,30 @@
       </section>
 
       <section class="card">
-        <h2>资料方案</h2>
-        <p class="muted">可以建多套资料（比如 PM 一套、DA 一套），各自有不同的求职意向、经历描述和简历文件。下面编辑的是选中的这一套。自动填写用「默认」方案；某个页面要用另一套时，在弹窗里切换。</p>
+        <h2>第 4 步　打开自动填写</h2>
+        <p class="muted">打开后，你进入任何网页，扩展都会把认得的表单直接填好（包括用户名密码、上传简历和照片），翻到下一步、展开新的段落也会接着填。关闭后只有点扩展图标里的「一键填写」时才填。<br>
+          打开期间，任何网页上带「手机」「邮箱」「密码」字样的输入框都会被填上，不投简历时建议关掉。扩展图标的弹窗里也有同一个开关。</p>
         <div class="row">
-          <select id="prof-pick"></select>
-          <button id="prof-new">复制为新方案</button>
-          <button id="prof-rename">重命名</button>
-          <button id="prof-default">设为默认</button>
-          <button id="prof-del" class="danger">删除</button>
+          <button id="grant-all" class="primary">打开自动填写</button>
+          <button id="revoke-all" class="danger">关闭自动填写</button>
         </div>
-        <div class="grid"><label class="field"><span>这套资料上传哪份简历</span><select id="prof-resume"></select></label></div>
+        <div id="sites" class="site-list"></div>
+        <label class="check"><input id="auto-password" type="checkbox"> 自动填写时也填密码框（用第 2 步「网申账号」里的密码）</label>
       </section>
 
-      <div id="sections"></div>
+      <section class="card">
+        <h2>备份与清空</h2>
+        <p class="muted">平时用不到。换电脑或重装浏览器前「导出备份」，到新电脑上「导入备份」恢复当前这套资料。备份是明文文件，不含简历和照片文件，请自己保管好。</p>
+        <div class="row">
+          <button id="export">导出备份 (JSON)</button>
+          <button id="import">导入备份</button>
+          <input id="import-file" type="file" accept="application/json,.json" hidden>
+          <button id="ai-template">下载空白模板 (JSON)</button>
+          <button id="pw-remove" class="danger" hidden>取消加密</button>
+          <button id="wipe" class="danger">清空全部数据</button>
+        </div>
+        <p class="muted">「空白模板」和备份是同一种格式，想用编辑器手写、或让 AI 批量修改资料时用；改好后把内容粘贴到第 1 步的框里导入。</p>
+      </section>
     </main>
   </div>
   <div id="status" class="muted" hidden></div>

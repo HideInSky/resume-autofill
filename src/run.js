@@ -12,6 +12,9 @@ globalThis.runFill = async function ({ tabId, frameIds, opts }) {
   const { book, index } = await pickProfile(tabId);
   const entry = book.list[index];
   const profile = structuredClone(entry.data || {});
+  // 期望城市：三层卡片按从上到下、从左到右展开成第一 / 二 / 三意向
+  const cities = ((profile.intent || {}).cities || []).flat().filter(Boolean);
+  if (cities.length) Object.assign(profile.intent, { city: cities[0], city2: cities[1] || '', city3: cities[2] || '' });
   // 没开「填写密码框」时，密码根本不会被传进页面
   if (!opts.fillPassword && profile.account) delete profile.account.password;
 

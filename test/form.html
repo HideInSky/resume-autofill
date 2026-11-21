@@ -82,7 +82,7 @@ const SAMPLE = {
   basic: { name: '张三', firstName: 'San', lastName: 'Zhang', gender: '女', birthday: '2001-03-15', phone: '13800000000',
            email: 'zhangsan@example.com', political: '共青团员', city: '上海', wechat: 'zs_wx', linkedin: 'https://linkedin.com/in/example' },
   account: { username: 'zhangsan01', password: 'Test-Only-123' },
-  intent: { position: '数据分析师', sponsorship: '否' },
+  intent: { position: '数据分析师' },
   education: [
     { school: '示例大学', degree: '硕士', major: '统计学', start: '2023-09', end: '2025-06', city: '北京' },
     { school: '样例学院', degree: '本科', major: '数学' },
@@ -107,7 +107,7 @@ const EXPECT = [
   ['开始(YYYY.MM)', v('w3'), '2024.06'], ['工作内容', v('w4'), '负责报表与归因分析'],
   ['First name', v('g1'), 'San'], ['Last name', v('g2'), 'Zhang'], ['Email', v('g3'), 'zhangsan@example.com'],
   ['Phone', v('g4'), '13800000000'], ['LinkedIn', v('g5'), 'https://linkedin.com/in/example'],
-  ['Gender(radio)', radio('g_gender'), 'f'], ['Sponsorship', v('g7'), 'No'], ['Degree(无第3段→不填)', v('g8'), ''],
+  ['Gender(radio)', radio('g_gender'), 'f'], ['Sponsorship(无此字段,不填)', v('g7'), ''], ['Degree(无第3段→不填)', v('g8'), ''],
   ['Username', v('g9'), 'zhangsan01'], ['Password(第二次才填)', v('g10'), 'Test-Only-123'],
   ['搜索框(不填)', v('g11'), ''], ['About you', v('g12'), 'Hello, this is a sample.'],
   ['第一次运行未填密码', String(report.filled.includes('网申账号 · 密码')), 'false'],

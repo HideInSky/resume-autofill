@@ -27,7 +27,7 @@ async function refresh() {
   renderProfiles();
 }
 
-// —— 这个页面用哪套资料（PM / DA …）——
+// —— 这个页面用哪套资料 ——
 function renderProfiles() {
   $('prof-row').hidden = book.list.length < 2;
   $('prof-pick').replaceChildren(
@@ -82,7 +82,7 @@ function renderCopyList() {
     const items = sec.repeat ? profile[sec.id] || [] : [profile[sec.id] || {}];
     items.forEach((item, i) => {
       for (const f of sec.fields) {
-        if (!item[f.key]) continue;
+        if (!item[f.key] || typeof item[f.key] !== 'string') continue;
         rows.push({ label: f.label + (sec.repeat && items.length > 1 ? ` #${i + 1}` : ''), value: item[f.key], secret: f.type === 'password' });
       }
     });
