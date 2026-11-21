@@ -98,7 +98,9 @@ function renderCopyList() {
       const label = document.createElement('b');
       const value = document.createElement('span');
       label.textContent = r.label;
-      value.textContent = r.secret ? '••••••••' : r.value;
+      // 密码只把最后三位换成星号，够你认出是哪一个
+      value.textContent = r.secret ? r.value.slice(0, -3) + '***' : r.value;
+      if (!r.secret) btn.title = r.value;
       btn.append(label, value);
       btn.addEventListener('click', async () => {
         await navigator.clipboard.writeText(r.value);

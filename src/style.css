@@ -187,10 +187,11 @@ input.dflt, select.dflt, textarea.dflt, .chip.dflt, .key.dflt { border-color: va
 details > summary { cursor: pointer; color: var(--muted); font-weight: 500; }
 details[open] > summary { margin-bottom: 8px; color: var(--ink); }
 .copy-list { max-height: 220px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); scrollbar-width: thin; }
-.copy-list button { display: flex; justify-content: space-between; gap: 12px; width: 100%; min-height: 32px; padding: 0 10px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; font-weight: 400; text-align: left; }
+.copy-list button { display: grid; gap: 1px; width: 100%; min-height: 0; padding: 8px 12px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; font-weight: 400; text-align: left; }
 .copy-list button:last-child { border-bottom: 0; }
-.copy-list b { flex: none; font-weight: 500; color: var(--muted); }
-.copy-list span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.copy-list b { font-size: 12px; font-weight: 500; color: var(--muted); }
+.copy-list span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.popup .stack > *, .popup details > * { min-width: 0; }
 .foot { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 #status.ok { color: var(--bg); }
 .steps-nav { scrollbar-width: none; }
