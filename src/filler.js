@@ -116,6 +116,7 @@
     if (isComboDiv(el)) return true;
     if (el.tagName !== 'INPUT' || inDatePicker(el)) return false;
     if (el.getAttribute('role') === 'combobox' || el.getAttribute('aria-haspopup') === 'listbox' || el.closest('[role="combobox"]')) return true;
+    if (el.closest('[class*="cascader"]')) return true; // 省 / 市这种一级一级点的选择器
     return el.readOnly && (!!el.closest(SELECT_WRAP) || /请选择|select|choose/i.test(el.placeholder));
   }
 
@@ -292,6 +293,28 @@
     };
     const trigger = el.closest('[role="combobox"]') || el; // 输入框在下拉外框里面时，点外框才会弹出选项
     press(trigger);
+    // 级联选择（省 / 市 / 区）：资料里写成「浙江/杭州」，一级一级点下去
+    if (el.closest('[class*="cascader"]')) {
+      const parts = String(value).split(/\s*[\/／>,，]\s*/).filter(Boolean);
+      let known = before;
+      let picked = 0;
+      for (const part of parts) {
+        let opts = [];
+        for (const end = Date.now() + 1500; Date.now() < end && !opts.length; await sleep(60)) opts = visibleOptions().filter((o) => !known.has(o));
+        const hit = pickOption(toOptions(opts), part);
+        if (!hit) break;
+        known = new Set(visibleOptions());
+        press(hit.el.querySelector('[class*="label"]') || hit.el);
+        picked++;
+        await sleep(200);
+      }
+      if (visibleOptions().some((o) => !before.has(o))) {
+        pressKey(el, 'Escape');
+        press(document.body);
+        await sleep(100);
+      }
+      return picked > 0;
+    }
     const typer = el.tagName === 'INPUT' ? el : el.querySelector('input');
     let hit = pickOption(toOptions(await waitFresh(1500)), value);
     if (!hit && typer) {
@@ -736,7 +759,7 @@
         // 已选的值通常显示在输入框旁边的一个小标签里，往外找几层
         let chosen = null;
         for (let n = el.parentElement, d = 0; n && d < 4 && !chosen; n = n.parentElement, d++) {
-          if (n.matches(SELECT_WRAP)) chosen = n.querySelector('[class*="selection-item"],[class*="selected-value"],[class*="single-value"],[class*="select-value"]');
+          if (n.matches(SELECT_WRAP)) chosen = n.querySelector('[class*="selection-item"],[class*="selected-value"],[class*="single-value"],[class*="select-value"],[class*="select__placeholder"]:not(.is-transparent)');
         }
         if (!chosen && isComboDiv(el)) chosen = el.querySelector('[class*="selected-value"],[class*="selection-item"]');
         if (!opts.overwrite && ((el.value || '').trim() || (chosen && chosen.textContent.trim()))) { report.kept++; continue; }
