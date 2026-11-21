@@ -25,6 +25,7 @@ async function refresh() {
   renderCopyList();
   renderAuto();
   renderProfiles();
+  chrome.storage.local.get('settings').then(({ settings = {} }) => ($('opt-save').checked = settings.autoSave === true));
 }
 
 // —— 这个页面用哪套资料 ——
@@ -114,7 +115,7 @@ async function fill(forceOverwrite) {
   try {
     const reports = await runFill({
       tabId: tab.id,
-      opts: { overwrite: forceOverwrite === true || $('opt-overwrite').checked, fillPassword: $('opt-password').checked },
+      opts: { overwrite: forceOverwrite === true || $('opt-overwrite').checked, fillPassword: $('opt-password').checked, save: $('opt-save').checked },
     });
     const filled = reports.flatMap((r) => r.filled);
     const kept = reports.reduce((n, r) => n + r.kept, 0);

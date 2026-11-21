@@ -29,9 +29,20 @@
     sectionHints: {
       education: /educat|school|教育/,
       project: /project|项目/,
-      work: /work|employ|intern|工作|实习/,
+      work: /work|employ|inter ?n|工作|实习/,
       language: /language|语言/,
     },
+
+    // 「最高学历」「最高学历学校」这类汇总字段：填学历最高的那一段，不算进第几段经历
+    // 页面上的段落小标题属于哪一段（也用来找那一段的「添加」按钮）
+    headings: {
+      education: /教育|学历|education/,
+      work: /工作经历|工作经验|工作履历|实习|work experience|intern|employment/,
+      project: /项目|project/,
+      language: /语言|language/,
+    },
+
+    top: /最高学历|最高学位|highest (degree|education)/,
 
     // 上传文件：按上传框旁边的文字判断该传什么
     files: {
@@ -94,6 +105,8 @@
           f('city2', '第二意向城市', /第二意向|第二志愿.*(城市|地)/, { hidden: true }),
           f('city3', '第三意向城市', /第三意向|第三志愿.*(城市|地)/, { hidden: true }),
           f('city', '第一意向城市', /期望城市|意向城市|期望地点|期望工作地|意向工作地|工作意向地|preferred (city|location)/, { hidden: true }),
+          f('referral', '推荐方式（有无内推）', /推荐方式|内推方式|是否内推/, { fallback: '无', pre: true, placeholder: '如 无 / 内推' }),
+          f('source', '招聘信息来源', /信息来源|招聘来源|了解到|获知|渠道|how did you hear|source/, { fallback: '官网', placeholder: '如 官网 / 牛客网' }),
           f('available', '最快到岗时间', /到岗|入职时间|可入职|available|earliest start|notice period/),
           f('adjust', '是否服从调剂 / 调配', /服从.*(调配|调剂|分配)|接受调剂/, { type: 'select', options: YES_NO, fallback: '是' }),
         ],
@@ -113,6 +126,7 @@
             type: 'textarea',
             generic: 'description',
           }),
+          f('achievement', '工作业绩', /^工作业绩$|^业绩$|工作成果|achievement/, { type: 'textarea' }),
         ],
       },
       {
@@ -121,7 +135,9 @@
         repeat: true,
         fields: [
           f('name', '项目名称', /项目名|project (name|title)/, { req: true }),
-          f('role', '担任角色', /项目角色|担任角色|项目职责|项目职务|your role/),
+          f('role', '担任角色 / 职务', /项目角色|担任角色|项目职务|^职务|^角色|your role/),
+          // alt: 这一项没填时，用同一段的另一项顶上
+          f('duty', '个人职责（不填则用项目描述）', /项目职责|个人职责|本人职责|承担职责|个人贡献/, { type: 'textarea', alt: 'description' }),
           f('link', '项目链接', /项目链接|项目地址|project (url|link)/),
           f('start', '开始时间', null, { type: 'month', generic: 'start', req: true }),
           f('end', '结束时间', null, { type: 'month', generic: 'end', req: true }),
@@ -137,8 +153,9 @@
         hint: '网站把语言拆成「语言 / 熟练程度 / 证书 / 成绩」几栏时用这里；只有一个大文本框时用「其他」里的语言能力。',
         repeat: true,
         fields: [
-          f('name', '语言', /语言名称|语种|语言类别/, { placeholder: '如 英语' }),
-          f('level', '熟练程度', /熟练程度|掌握程度|proficien/, { placeholder: '如 熟练 / 精通' }),
+          f('name', '语言', /语言名称|语种|语言类别|^语言$/, { placeholder: '如 英语' }),
+          f('level', '熟练程度 / 听说能力', /熟练程度|掌握程度|精通程度|语言水平|听说|口语|proficien/, { placeholder: '如 熟练 / 精通' }),
+          f('level2', '读写能力（不填则同上）', /读写/, { alt: 'level' }),
           f('cert', '证书', null, { generic: 'cert', placeholder: '如 英语六级 / 托福 / 雅思' }),
           f('score', '成绩', null, { generic: 'score' }),
         ],
@@ -148,7 +165,7 @@
         title: '基本信息',
         // early: 这些叫法很明确，先于「按段落归属的通用字段」判断
         fields: [
-          f('nationality', '国籍 / 证件签发地', /国籍|签发国家|nationality|citizenship/, { early: true, placeholder: '如 中国', fallback: '中国' }),
+          f('nationality', '国籍 / 证件签发地', /国籍|签发国家|^国家 ?地区$|^国家$|^国家或地区$|nationality|citizenship/, { early: true, placeholder: '如 中国', fallback: '中国' }),
           f('firstName', '名 (First name)', /first name|given name|fname|^名$/, { ai: '「名」的汉语拼音，首字母大写连写，如 Xiaoming' }),
           f('lastName', '姓 (Last name)', /last name|family name|surname|lname|^姓$/, { ai: '「姓」的汉语拼音，首字母大写，如 Zhang' }),
           f('englishName', '英文名 / 拼音', /英文名|拼音|english name|preferred name/, { ai: '简历里有英文名就用；没有就填「名 姓」的拼音，如 Xiaoming Zhang' }),

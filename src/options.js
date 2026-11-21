@@ -490,11 +490,13 @@ $('revoke-all').addEventListener('click', async () => {
   if (origins.length) await chrome.permissions.remove({ origins });
   renderSites();
 });
-$('auto-password').addEventListener('change', async (e) => {
-  const { settings = {} } = await chrome.storage.local.get('settings');
-  await chrome.storage.local.set({ settings: { ...settings, autoPassword: e.target.checked } });
-  flash('已保存 ✓');
-});
+for (const [id, key] of [['auto-password', 'autoPassword'], ['auto-save', 'autoSave']]) {
+  $(id).addEventListener('change', async (e) => {
+    const { settings = {} } = await chrome.storage.local.get('settings');
+    await chrome.storage.local.set({ settings: { ...settings, [key]: e.target.checked } });
+    flash('已保存 ✓');
+  });
+}
 
 // —— 页面状态 ——
 async function refresh() {
@@ -513,6 +515,7 @@ async function refresh() {
   files = await Vault.loadFiles();
   const { settings = {} } = await chrome.storage.local.get('settings');
   $('auto-password').checked = settings.autoPassword !== false;
+  $('auto-save').checked = settings.autoSave === true;
   renderEditor();
   renderFiles();
   renderSites();

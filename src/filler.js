@@ -38,6 +38,9 @@
     ['身份证', '居民身份证', 'id card', 'identity card', 'national id'],
     ['护照', 'passport'],
     ['中国', 'china', '中国大陆', 'prc'],
+    ['熟练', '熟悉', '良好', '商务会话'],
+    ['精通', '无障碍沟通'],
+    ['一般', '日常会话'],
     ['全国各地', '中国国内各地', '全国', '不限'],
     ['中国香港', '香港', 'hong kong'],
     ['美国', 'united states', 'usa', 'us', 'united states of america', '美利坚合众国'],
@@ -69,6 +72,12 @@
       if (hit) return hit;
     }
     const v = terms[0];
+    // 「TOP10%」对「前10%」：数字和百分号对上就行
+    const pct = /(\d+)\s*%/.exec(v);
+    if (pct) {
+      const hit = options.find((o) => new RegExp('(^|\\D)' + pct[1] + '\\s*%').test(o.text));
+      if (hit) return hit;
+    }
     return (
       options
         .filter((o) => o.text.length >= (isCJK(o.text) ? 2 : 4) && v.includes(o.text))
@@ -83,17 +92,30 @@
   const DATE_SEL = '[class*="date"],[class*="Date"],[data-tag*="date"],[class*="calendar"],.ant-picker';
   const SELECT_WRAP = '[class*="select"],[class*="Select"],[class*="cascader"],[class*="dropdown"]';
 
+  // 完全自绘、没有输入框的控件：
+  // 1) 下拉框是一个 div[role=combobox]；2) 「起止时间」是两段可点的年月文字
+  const PERIOD_SEL = '[class*="date-picker"][class*="period"]';
+  const isPeriod = (el) => el.matches && el.matches(PERIOD_SEL) && !/label|panel|input|line/.test(String(el.className).replace(/date-picker-period/g, ''));
+  const periodLabels = (root) => [...root.querySelectorAll('[class*="label"]')].filter((l) => !l.parentElement.closest('[class*="label"]'));
+  const isComboDiv = (el) =>
+    el.tagName !== 'INPUT' && el.getAttribute && el.getAttribute('role') === 'combobox' && ![...el.querySelectorAll('input')].some(visible);
+
   function collect(root, out = []) {
     root.querySelectorAll(FIELD_SEL).forEach((el) => out.push(el));
+    root.querySelectorAll(`[role="combobox"],${PERIOD_SEL}`).forEach((el) => {
+      if (isComboDiv(el) || (isPeriod(el) && !el.parentElement.closest(PERIOD_SEL))) out.push(el);
+    });
     root.querySelectorAll('*').forEach((el) => el.shadowRoot && collect(el.shadowRoot, out));
-    return out;
+    // 按页面上的先后顺序排
+    return out.sort((a, b) => (a === b ? 0 : a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
   }
 
   const inDatePicker = (el) => !!el.closest(DATE_SEL);
   // 网站自己画的下拉框：一个只读输入框，点了以后才弹出选项
   function isCustomSelect(el) {
+    if (isComboDiv(el)) return true;
     if (el.tagName !== 'INPUT' || inDatePicker(el)) return false;
-    if (el.getAttribute('role') === 'combobox' || el.getAttribute('aria-haspopup') === 'listbox') return true;
+    if (el.getAttribute('role') === 'combobox' || el.getAttribute('aria-haspopup') === 'listbox' || el.closest('[role="combobox"]')) return true;
     return el.readOnly && (!!el.closest(SELECT_WRAP) || /请选择|select|choose/i.test(el.placeholder));
   }
 
@@ -183,13 +205,14 @@
       labels.push(box.text);
       if (box.forAttr) own.push(box.forAttr);
     }
-    labels = labels.filter(Boolean);
+    // 去掉「请输入」「请选择」这类开头，免得「请输入职责描述」被看成含有「入职」
+    labels = labels.map((l) => l.replace(/^请?(输入|填写|选择|录入)(您的|你的)?/, '').trim()).filter(Boolean);
     if (!labels.length && !group) labels = [nearbyText(el)].filter(Boolean);
     return {
       own,
       labels,
       parts: [...labels, ...own],
-      pos: box ? box.pos : 0,
+      pos: box ? Math.max(0, box.pos) : 0,
       size: box ? box.size : 1,
       hint: sectionHint(el, own),
     };
@@ -216,8 +239,10 @@
     const o = { bubbles: true, cancelable: true, view: window };
     for (const t of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) el.dispatchEvent(new MouseEvent(t, o));
   }
+  const KEY_CODES = { Enter: 13, Escape: 27 };
   const pressKey = (el, key) => {
-    for (const t of ['keydown', 'keyup']) el.dispatchEvent(new KeyboardEvent(t, { key, code: key, bubbles: true }));
+    const code = KEY_CODES[key] || 0;
+    for (const t of ['keydown', 'keyup']) el.dispatchEvent(new KeyboardEvent(t, { key, code: key, keyCode: code, which: code, bubbles: true }));
   };
 
   function formatDate(value, el) {
@@ -265,17 +290,19 @@
       }
       return [];
     };
-    press(el);
+    const trigger = el.closest('[role="combobox"]') || el; // 输入框在下拉外框里面时，点外框才会弹出选项
+    press(trigger);
+    const typer = el.tagName === 'INPUT' ? el : el.querySelector('input');
     let hit = pickOption(toOptions(await waitFresh(1500)), value);
-    if (!hit) {
+    if (!hit && typer) {
       // 选项太多（学校、专业）只渲染了一部分：输入关键字让它过滤
       for (const q of queries(value)) {
-        setRaw(el, q);
+        setRaw(typer, q);
         await sleep(400);
         hit = pickOption(toOptions(fresh()), value);
         if (hit) break;
       }
-      if (!hit) setRaw(el, '');
+      if (!hit) setRaw(typer, '');
     }
     if (hit) {
       press(hit.el);
@@ -284,8 +311,121 @@
     }
     pressKey(el, 'Escape');
     press(document.body);
+    await sleep(150);
+    if (fresh().length) press(trigger); // 还没收起来：再点一下它自己
     await sleep(100);
     return false;
+  }
+
+  // —— 只读的日期选择器（Ant Design / Element 等）：点开 → 写入 → 回车确认 ——
+  function panelMode() {
+    const open = [...document.querySelectorAll('[class*="picker-dropdown"],[class*="picker-panel"],[class*="date-picker"]')].filter(visible);
+    const has = (re) => open.some((p) => p.querySelector(re));
+    if (has('[class*="date-panel"],[class*="date-table"]')) return 'date';
+    if (has('[class*="month-panel"],[class*="month-table"]')) return 'month';
+    if (has('[class*="year-panel"],[class*="year-table"]')) return 'year';
+    return null;
+  }
+  async function fillPicker(el, value) {
+    const m = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(value);
+    const range = el.closest('[class*="range"]');
+    const isStart = !!range && range.querySelector('input') === el;
+    let tries = [value];
+    for (let n = 0; n < tries.length; n++) {
+      press(el);
+      el.focus();
+      await sleep(350);
+      if (m && n === 0) {
+        const all = { date: `${m[1]}-${m[2]}-${m[3] || '01'}`, month: `${m[1]}-${m[2]}`, year: m[1] };
+        const mode = panelMode() || 'date';
+        tries = [all[mode], ...Object.values(all).filter((x) => x !== all[mode])];
+      }
+      setRaw(el, tries[n]);
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      await sleep(150);
+      pressKey(el, 'Enter');
+      await sleep(350);
+      // 起止时间的「开始」要等「结束」也填了才算数，这里先不让它失焦
+      if (isStart) return true;
+      el.blur();
+      press(document.body);
+      await sleep(250);
+      if (el.value.trim()) return true;
+    }
+    return false;
+  }
+
+  // —— 自绘的「起止时间」：点年月文字 → 弹出年、月两列 → 依次点 ——
+  const hasDigits = (el) => /\d/.test(el.textContent);
+  const waitFor = async (fn, ms) => {
+    for (const end = Date.now() + ms; Date.now() < end; await sleep(80)) {
+      const v = fn();
+      if (v) return v;
+    }
+    return fn();
+  };
+  const periodLists = () =>
+    [...document.querySelectorAll('[class*="date-picker"][class*="panel"] [class*="panel-list"]')].filter(
+      (l) => visible(l) && !/item/.test(String(l.className).replace(/panel-list/g, ''))
+    );
+  async function fillPeriod(root, values, overwrite) {
+    let done = 0;
+    for (let i = 0; i < 2; i++) {
+      const label = () => periodLabels(root)[i];
+      const m = /^(\d{4})-(\d{2})/.exec(values[i] || '');
+      if (!label() || !m || (!overwrite && hasDigits(label()))) continue;
+      if (!periodLists().length || !/focus|active/.test(label().className)) press(label());
+      // 年、月两列依次点；每点一下等文字变过来再点下一个
+      for (const [col, text] of [[0, m[1]], [1, m[2]]]) {
+        const item = await waitFor(() => {
+          const list = periodLists()[col];
+          return list && [...list.children].find((c) => c.textContent.trim() === text || c.textContent.trim() === String(Number(text)));
+        }, 1500);
+        if (!item) break;
+        item.scrollIntoView({ block: 'nearest' });
+        press(item);
+        await waitFor(() => label() && label().textContent.includes(text), 1200);
+        await sleep(120);
+      }
+      if (label() && label().textContent.includes(m[1]) && label().textContent.includes(m[2])) done++;
+    }
+    if (periodLists().length) {
+      press(document.body);
+      await sleep(150);
+    }
+    return done;
+  }
+  globalThis.__raTest = { fillPeriod };
+
+  // —— 资料里的经历比页面上的段数多时，替用户点一下那一段的「添加」——
+  const ADD_SECTIONS = S.headings;
+  const HEAD_SEL = 'h1,h2,h3,h4,h5,legend,[class*="title"],[class*="Title"],[class*="header"]';
+  const headSection = (text) => Object.keys(S.headings).find((id) => S.headings[id].test(text)) || null;
+  // 页面上的段落小标题：能对应到某一段的，或者是真正的标题标签（用来判断「这一段结束了」）
+  function sectionHeads() {
+    const out = [];
+    for (const h of document.querySelectorAll(HEAD_SEL)) {
+      const t = shortText(h);
+      if (!t || t.length > 16 || !visible(h)) continue;
+      const sec = headSection(t);
+      if (sec || /^(H[1-5]|LEGEND)$/.test(h.tagName)) out.push({ el: h, sec });
+    }
+    return out;
+  }
+  function findAddButton(secId) {
+    const heads = [...document.querySelectorAll(HEAD_SEL)].filter((h) => visible(h) && shortText(h) && shortText(h).length <= 16);
+    for (const b of document.querySelectorAll('button,[role="button"],a,[class*="add"]')) {
+      if (b.disabled || !visible(b)) continue;
+      const t = norm(b.textContent);
+      if (!t || t.length > 16 || !/^(\+ ?)?(这里|点击)?(添加|新增|增加|add)/.test(t)) continue;
+      if (ADD_SECTIONS[secId].test(t)) return b;
+      if (Object.values(ADD_SECTIONS).some((re) => re.test(t))) continue; // 是别的段落的按钮
+      // 按钮上只写了「添加」：看它上方最近的标题是哪一段
+      let head = null;
+      for (const h of heads) if (!h.contains(b) && h.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) head = h;
+      if (head && ADD_SECTIONS[secId].test(shortText(head))) return b;
+    }
+    return null;
   }
 
   // —— 文件上传 ——
@@ -345,6 +485,7 @@
   async function run(profile, files, opts) {
     const report = { filled: [], kept: 0, noData: [], unknown: 0, wantFiles: [] };
     const state = { current: null, idx: {}, seen: {} };
+    let passNo = 0;
     const pending = (globalThis.__raPendingFiles = []);
     const sectionById = Object.fromEntries(S.sections.map((s) => [s.id, s]));
     const customs = (profile.custom || [])
@@ -377,6 +518,7 @@
       }
       // 默认值只用在资料里确实有的那一段经历上
       const exists = !sec.repeat || !!profile[sec.id]?.[state.idx[sec.id]];
+      if ((value == null || value === '') && field.alt) value = (sec.repeat ? profile[sec.id]?.[state.idx[sec.id]] : profile[sec.id])?.[field.alt];
       if ((value == null || value === '') && field.fallback && exists) value = field.fallback;
       return { value, label, field };
     }
@@ -397,6 +539,21 @@
       }
       if (any(S.skip)) return null;
 
+      // 「最高学历 / 最高学历学校 / 最高学历毕业日期」：取学历最高的那段，不影响后面数第几段
+      if (any(S.top)) {
+        const edu = sectionById.education;
+        const rest = desc.labels.map((p) => p.replace(S.top, '').trim()).filter(Boolean);
+        const test = (re) => rest.some((p) => re.test(p));
+        const field = !rest.length
+          ? edu.fields.find((x) => x.key === 'degree')
+          : edu.fields.find((x) => x.match && test(x.match) && !(x.not && test(x.not))) ||
+            edu.fields.find((x) => x.generic && S.generic[x.generic] && test(S.generic[x.generic]));
+        if (!field) return null;
+        const rank = ['大专', '本科', '硕士', '博士'];
+        const best = [...(profile.education || [])].sort((a, b) => rank.indexOf(b.degree) - rank.indexOf(a.degree))[0];
+        return { value: best && best[field.key], label: `最高学历 · ${field.label}`, field };
+      }
+
       // 同一个标题下并排的 2~3 个控件：按位置当作 国家 / 省 / 市
       const place = (sec, field) => {
         if (desc.size >= 2 && LOC.includes(field.generic)) {
@@ -415,12 +572,30 @@
         const tryGeneric = () => {
           for (const [g, re] of Object.entries(S.generic)) {
             if (!test(re)) continue;
-            const sec = sectionById[desc.hint || state.current];
+            const sec = sectionById[desc.hint || desc.headSec || state.current];
             const field = sec && sec.fields.find((x) => x.generic === g);
             if (field) return place(sec, field);
           }
           return null;
         };
+        const inSection = (sec) => {
+          for (let field of sec.fields) {
+            if (!field.match || !kindOk(field) || !test(field.match) || (field.not && test(field.not))) continue;
+            // 「毕业院校所在国家」这种：属于这一段，但其实问的是地点
+            if (sec.repeat && field.anchor) {
+              const loc = LOC.find((g) => test(S.generic[g]));
+              field = (loc && sec.fields.find((x) => x.generic === loc)) || field;
+            }
+            return place(sec, field);
+          }
+          return null;
+        };
+        // 已经知道在哪一段经历里（看小标题或外层容器）：先按那一段的字段认
+        const here = sectionById[desc.headSec];
+        if (here && here.repeat) {
+          const hit = inSection(here);
+          if (hit) return hit;
+        }
         for (const sec of S.sections) {
           if (sec.id === 'custom') continue;
           if (sec.id === 'basic') {
@@ -431,15 +606,8 @@
             const g = tryGeneric();
             if (g) return g;
           }
-          for (let field of sec.fields) {
-            if (!field.match || !kindOk(field) || !test(field.match) || (field.not && test(field.not))) continue;
-            // 「毕业院校所在国家」这种：属于这一段，但其实问的是地点
-            if (sec.repeat && field.anchor) {
-              const loc = LOC.find((g) => test(S.generic[g]));
-              field = (loc && sec.fields.find((x) => x.generic === loc)) || field;
-            }
-            return place(sec, field);
-          }
+          const hit = inSection(sec);
+          if (hit) return hit;
         }
         return null;
       };
@@ -448,15 +616,35 @@
       return (desc.labels.length ? match(desc.labels) : null) || match(desc.parts);
     }
 
+    async function pass() {
+    state.current = null;
+    state.idx = {};
+    state.seen = {};
+    report.kept = 0;
+    report.unknown = 0;
+    report.noData = [];
+    const again = opts.auto || passNo > 0; // 第二遍起只处理新出现的控件
     const radioDone = new WeakSet();
+    const combosDone = new WeakSet();
+    const heads = sectionHeads();
+    let hi = -1;
+    let lastHead = null;
     for (const el of collect(document)) {
       if (el.disabled || SKIP_TYPES.has(el.type) || radioDone.has(el)) continue;
+      if (el.getAttribute('aria-hidden') === 'true') continue; // 组件内部用来量尺寸的隐藏副本
+      // 走到了哪个小标题下面
+      while (hi + 1 < heads.length && !heads[hi + 1].el.contains(el) && heads[hi + 1].el.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) hi++;
+      const head = hi >= 0 ? heads[hi] : null;
+      if (head !== lastHead) {
+        lastHead = head;
+        state.current = head.sec; // 换了段落：通用字段（开始 / 结束时间等）跟着换
+      }
 
       // 文件上传框（input 本身通常是隐藏的，看它外面的框）
       if (el.type === 'file') {
         const box = uploadBox(el);
         if (!visible(box)) continue;
-        const fresh = !(opts.auto && seen.has(el));
+        const fresh = !(again && seen.has(el));
         seen.add(el);
         if (!fresh) continue;
         const kind = fileKind(describe(el));
@@ -464,8 +652,34 @@
         if (!files[kind]) { report.noData.push(FILE_LABEL[kind]); continue; }
         if (!opts.overwrite && hasFile(el, box)) { report.kept++; continue; }
         if (!acceptOk(el, files[kind].name)) { report.unknown++; continue; }
-        pending.push({ el, kind });
+        if (!pending.some((p) => p.el === el)) pending.push({ el, kind });
         if (!report.wantFiles.includes(kind)) report.wantFiles.push(kind);
+        continue;
+      }
+
+      if (el.tagName === 'INPUT' && el.closest(PERIOD_SEL)) continue; // 自绘起止时间里的隐藏输入框
+      // 下拉框点开后里面才冒出来的搜索框：外框已经处理过了
+      const combo = el.tagName === 'INPUT' ? el.closest('[role="combobox"]') : null;
+      if (combo && combosDone.has(combo)) continue;
+      if (isComboDiv(el)) combosDone.add(el);
+      if (isPeriod(el)) {
+        if (!visible(el)) continue;
+        const fresh = !(again && seen.has(el));
+        seen.add(el);
+        const desc = describe(el);
+        desc.headSec = head ? head.sec : null;
+        const sec = sectionById[desc.hint || desc.headSec || state.current];
+        const startField = sec && sec.fields.find((x) => x.generic === 'start');
+        const endField = sec && sec.fields.find((x) => x.generic === 'end');
+        if (!startField || !endField) { if (fresh) report.unknown++; continue; }
+        const a = useField(sec, startField);
+        const b = useField(sec, endField);
+        if (opts.debug) (report.debug ??= []).push(`${desc.labels.join(' / ')} [period] -> ${a.label}`);
+        if (!fresh || opts.dry) continue;
+        if (!a.value && !b.value) { report.noData.push(a.label); continue; }
+        const n = await fillPeriod(el, [a.value, b.value], opts.overwrite);
+        if (n) { highlight(el); report.filled.push(a.label); } else if (periodLabels(el).some((l) => !hasDigits(l))) report.unknown++;
+        else report.kept++;
         continue;
       }
 
@@ -473,7 +687,7 @@
       const group = isRadio ? radioGroup(el) : null;
       if (group) group.forEach((r) => radioDone.add(r));
       if (!visible(isRadio ? el.closest('label') || el.parentElement : el)) continue;
-      const fresh = !(opts.auto && seen.has(el));
+      const fresh = !(again && seen.has(el));
       (group || [el]).forEach((x) => seen.add(x));
 
       if (el.type === 'password') {
@@ -486,11 +700,16 @@
         continue;
       }
 
-      const kind = isRadio ? 'radio' : el.tagName === 'SELECT' ? 'select' : isCustomSelect(el) ? 'custom' : 'text';
+      let kind = isRadio ? 'radio' : el.tagName === 'SELECT' ? 'select' : isCustomSelect(el) ? 'custom' : 'text';
+      if (kind === 'text' && inDatePicker(el) && (el.readOnly || el.closest('.ant-picker,.el-date-editor'))) kind = 'picker';
       if (kind === 'text' && (el.readOnly || el.type === 'search')) continue;
 
       // 即使这个控件不用再填，也要走一遍识别，才能数清「现在是第几段经历」
-      const hit = resolve(describe(el, group), kind !== 'text');
+      const desc = describe(el, group);
+      desc.headSec = head ? head.sec : null;
+      const hit = resolve(desc, kind !== 'text' && kind !== 'picker');
+      if (opts.debug) (report.debug ??= []).push(`${desc.labels.join(' / ')} {${desc.own.join(',')}} [${kind}] -> ${hit ? hit.label : '?'}`);
+      if (opts.dry) continue; // 只识别、不写入（调试用）
       if (!fresh) continue;
       if (!hit) { report.unknown++; continue; }
       if (hit.value == null || hit.value === '') { report.noData.push(hit.label); continue; }
@@ -514,10 +733,18 @@
         setNative(el, opt.el.value);
         highlight(el);
       } else if (kind === 'custom') {
-        const wrap = el.closest(SELECT_WRAP);
-        const chosen = wrap && wrap.querySelector('[class*="selection-item"],[class*="selected-value"],[class*="single-value"]');
-        if (!opts.overwrite && (el.value.trim() || (chosen && chosen.textContent.trim()))) { report.kept++; continue; }
+        // 已选的值通常显示在输入框旁边的一个小标签里，往外找几层
+        let chosen = null;
+        for (let n = el.parentElement, d = 0; n && d < 4 && !chosen; n = n.parentElement, d++) {
+          if (n.matches(SELECT_WRAP)) chosen = n.querySelector('[class*="selection-item"],[class*="selected-value"],[class*="single-value"],[class*="select-value"]');
+        }
+        if (!chosen && isComboDiv(el)) chosen = el.querySelector('[class*="selected-value"],[class*="selection-item"]');
+        if (!opts.overwrite && ((el.value || '').trim() || (chosen && chosen.textContent.trim()))) { report.kept++; continue; }
         if (!(await fillCustomSelect(el, value))) { report.unknown++; continue; }
+        highlight(el);
+      } else if (kind === 'picker') {
+        if (!opts.overwrite && el.value.trim()) { report.kept++; continue; }
+        if (!(await fillPicker(el, value))) { report.unknown++; continue; }
         highlight(el);
       } else {
         if (!opts.overwrite && el.value.trim()) { report.kept++; continue; }
@@ -530,6 +757,44 @@
         highlight(el);
       }
       report.filled.push(hit.label);
+    }
+    }
+
+    // 填一遍；哪一段经历页面上不够用，就点那一段的「添加」再填，直到够用或点了没反应
+    const addFailed = (globalThis.__raAddFailed ??= new Set());
+    const count = (id) => (state.seen[id] ? state.idx[id] + 1 : 0);
+    let last = null; // 上一次点的是哪一段、点之前有几段
+    for (; passNo < 12; passNo++) {
+      await pass();
+      if (last && count(last.id) <= last.used) addFailed.add(last.id); // 点了但没多出能认的一段
+      last = null;
+      for (const id of opts.dry ? [] : Object.keys(ADD_SECTIONS)) {
+        const have = (profile[id] || []).filter((o) => o && Object.values(o).some(Boolean)).length;
+        if (have <= count(id) || addFailed.has(id)) continue;
+        const btn = findAddButton(id);
+        if (!btn) continue;
+        const before = collect(document).filter(visible).length;
+        btn.click();
+        // 新的一段可能要过一会儿才渲染出来
+        for (let waited = 0; waited < 3000 && collect(document).filter(visible).length <= before; waited += 200) await sleep(200);
+        await sleep(300);
+        if (collect(document).filter(visible).length <= before) {
+          addFailed.add(id);
+          continue;
+        }
+        last = { id, used: count(id) };
+        break;
+      }
+      if (!last || opts.dry) break;
+    }
+    // 可选：填完后点页面上的「保存」（只认按钮文字正好是「保存」的，不碰提交 / 投递）
+    if (opts.save && report.filled.length) {
+      for (const b of document.querySelectorAll('button,[role="button"]')) {
+        if (b.disabled || !visible(b) || !/^保 ?存$/.test(norm(b.textContent))) continue;
+        b.click();
+        report.saved = (report.saved || 0) + 1;
+        await sleep(1000);
+      }
     }
     return report;
   }

@@ -37,7 +37,7 @@ async function autofill(sender) {
   const reports = await runFill({
     tabId,
     frameIds: [sender.frameId],
-    opts: { auto: true, overwrite: false, fillPassword: settings.autoPassword !== false },
+    opts: { auto: true, overwrite: false, fillPassword: settings.autoPassword !== false, save: settings.autoSave === true },
   });
   const n = reports.reduce((sum, r) => sum + r.filled.length, 0);
   if (n) badge(tabId, String(n), '#15803d');
