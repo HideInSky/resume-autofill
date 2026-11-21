@@ -40,6 +40,10 @@ function renderProfiles() {
     })
   );
   $('prof-pick').value = String(index);
+  const name = book.list[index].name;
+  $('prof-chip').textContent = name;
+  $('prof-chip').hidden = false;
+  $('copy-title').textContent = `没填上？点击复制「${name}」的资料`;
   $('prof-default').hidden = index === book.active;
 }
 $('prof-pick').addEventListener('change', async (e) => {
@@ -98,7 +102,7 @@ function renderCopyList() {
       btn.append(label, value);
       btn.addEventListener('click', async () => {
         await navigator.clipboard.writeText(r.value);
-        label.textContent = '已复制 ✓';
+        label.textContent = '已复制';
         setTimeout(() => (label.textContent = r.label), 1000);
       });
       return btn;

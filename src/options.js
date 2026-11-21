@@ -26,7 +26,7 @@ function flash(text, cls = 'ok') {
 async function guarded(fn) {
   try {
     await fn();
-    flash('已保存 ✓');
+    flash('已保存');
   } catch (e) {
     flash(e.message === 'locked' ? '已锁定，未保存——请刷新页面重新解锁' : '保存失败：' + e.message, 'err');
   }
@@ -161,6 +161,8 @@ function grid(sec, data) {
     { className: 'grid' },
     sec.fields
       .filter((f) => !f.hidden)
+      // 必填的排前面，其余保持原来的顺序
+      .sort((a, b) => (b.req ? 1 : 0) - (a.req ? 1 : 0))
       .map((f) =>
         f.type === 'tiers'
           ? tiersControl(f, data)
@@ -214,7 +216,7 @@ function renderSection(sec) {
       ])
     );
   });
-  const add = el('button', { type: 'button', textContent: `+ 添加${sec.title}` });
+  const add = el('button', { type: 'button', textContent: `添加${sec.title.replace(/（.*）/, '')}` });
   add.addEventListener('click', () => {
     list.push({});
     rerender();
@@ -259,7 +261,7 @@ function renderFiles() {
     })
   );
   if (!list.length) $('resumes').append(el('span', { className: 'muted', textContent: '还没有简历文件。' }));
-  $('photo-name').textContent = files.photo ? `照片：${files.photo.name}（${kb(files.photo.size)}）` : '还没有照片。';
+  $('photo-name').textContent = files.photo ? `照片：${files.photo.name}（${kb(files.photo.size)}）` : '还没有照片';
   $('del-photo').hidden = !files.photo;
   renderProfiles();
 }
@@ -442,7 +444,7 @@ function importAI(text, replace) {
 }
 $('ai-prompt').addEventListener('click', async () => {
   await navigator.clipboard.writeText(buildPrompt());
-  flash('提示词已复制，去 AI 那边粘贴 ✓');
+  flash('提示词已复制，去 AI 那边粘贴');
 });
 $('ai-template').addEventListener('click', () => {
   const url = URL.createObjectURL(new Blob([JSON.stringify(buildTemplate(), null, 2)], { type: 'application/json' }));
@@ -494,7 +496,7 @@ for (const [id, key] of [['auto-password', 'autoPassword'], ['auto-save', 'autoS
   $(id).addEventListener('change', async (e) => {
     const { settings = {} } = await chrome.storage.local.get('settings');
     await chrome.storage.local.set({ settings: { ...settings, [key]: e.target.checked } });
-    flash('已保存 ✓');
+    flash('已保存');
   });
 }
 
