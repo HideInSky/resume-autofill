@@ -156,8 +156,15 @@ $('locked').addEventListener('submit', async (e) => {
   if (ok) refresh();
 });
 $('fill').addEventListener('click', () => fill());
-$('pin').hidden = SIDE || !chrome.sidePanel;
+$('pin').hidden = SIDE;
 $('pin').addEventListener('click', async () => {
+  if (!chrome.sidePanel) {
+    // 侧边栏是后来加的权限：扩展没刷新，或者这个浏览器没有侧边栏
+    const result = $('result');
+    result.className = 'err';
+    result.textContent = '侧边栏还用不了。请到 chrome://extensions 点一下本扩展的刷新按钮再试；如果刷新后仍然不行，说明这个浏览器不支持侧边栏。';
+    return;
+  }
   await chrome.sidePanel.open({ windowId: tab.windowId });
   window.close();
 });
