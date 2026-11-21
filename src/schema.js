@@ -82,8 +82,8 @@
           }),
           f('major', '专业', /专业|major|field of study|discipline|area of study/, { not: /技能|skill|排名|证书|资格/, req: true }),
           f('college', '学院 / 院系', /学院|院系|faculty/, { req: true }),
-          // percent: 资料里只写一个数字；下拉里选「前 N%」中刚好能包住它的那一档
-          f('rank', '成绩排名（前百分之几）', /排名|rank/, { placeholder: '只填数字，如 15 表示前 15%', percent: true }),
+          // percent: 资料里选一档；填表时在网站给的选项里选「不超过这一档」的最大那个
+          f('rank', '成绩排名（前百分之几）', /排名|rank/, { type: 'select', options: ['', '5%', '10%', '20%', '30%', '40%', '50%'], percent: true }),
           f('gpa', 'GPA / 绩点', /gpa|绩点|平均分|平均成绩|学业成绩/),
           f('mode', '学制', /学制|学历类型|学习形式|培养方式/, { type: 'select', options: ['', '全日制', '非全日制'], fallback: '全日制' }),
           f('cadre', '是否学生干部', /是否.*学生干部|担任.*学生干部/, { type: 'select', options: YES_NO, not: /级别|名称|职务/, fallback: '否' }),

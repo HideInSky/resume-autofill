@@ -49,6 +49,9 @@ function control(field, value, onInput) {
     input = el('textarea');
   } else if (field.type === 'select') {
     input = el('select', {}, field.options.map((o) => el('option', { value: o, textContent: o || '（未填）' })));
+  } else if (field.type === 'month' || field.type === 'date') {
+    // 日期一律用数字写（2025-09），不用浏览器自带的日期控件——它会按系统语言显示成 September 2025
+    input = el('input', { type: 'text', inputMode: 'numeric', autocomplete: 'off', placeholder: field.type === 'month' ? '如 2025-09' : '如 2000-07-28' });
   } else {
     input = el('input', { type: field.type || 'text', autocomplete: 'off', placeholder: field.placeholder || '' });
   }
@@ -63,6 +66,16 @@ function control(field, value, onInput) {
     onInput(val);
     paint();
   });
+  if (field.type === 'month' || field.type === 'date') {
+    // 输完后把 2025.9、2025年9月、20250901 这类写法统一成 2025-09 / 2025-09-01
+    input.addEventListener('change', () => {
+      const tidy = normDate(input.value.trim().replace(/^(\d{4})(\d{2})(\d{2})?$/, (m, y, mo, d) => [y, mo, d].filter(Boolean).join('-')), field.type);
+      if (tidy === input.value) return;
+      input.value = val = tidy;
+      onInput(val);
+      paint();
+    });
+  }
   let body = input;
   if (field.type === 'password') {
     const toggle = el('button', { type: 'button', textContent: '显示' });

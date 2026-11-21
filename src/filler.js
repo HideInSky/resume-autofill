@@ -88,8 +88,9 @@
     );
   }
 
-  // 成绩排名：资料里是一个数字（前百分之几）。选项里挑「上限 ≥ 这个数」的最小一档，
-  // 比如填 15，选项有 前5% / 前10% / 前20% / 前50%，就选 前20%。
+  // 成绩排名：资料里选的是一档（比如 20%）。在网站的选项里挑「不超过它」的最大一档，
+  // 比如资料选 20%，选项有 前5% / 前10% / 前25% / 前50%，就选 前10%。
+  // 网站的选项全都比它大时，选最小的那档。
   function pickPercent(options, value) {
     const n = parseFloat(String(value).replace(/[^\d.]/g, ''));
     if (isNaN(n)) return pickOption(options, value);
@@ -97,11 +98,10 @@
       const nums = (text.match(/\d+(\.\d+)?(?=\s*%)/g) || []).map(Number);
       return nums.length ? Math.max(...nums) : null;
     };
-    const fits = options
-      .map((o) => ({ o, top: upper(o.text) }))
-      .filter((x) => x.top != null && x.top >= n)
-      .sort((a, b) => a.top - b.top);
-    return fits.length ? fits[0].o : pickOption(options, '其他');
+    const tops = options.map((o) => ({ o, top: upper(o.text) })).filter((x) => x.top != null);
+    if (!tops.length) return pickOption(options, '其他');
+    const within = tops.filter((x) => x.top <= n).sort((a, b) => b.top - a.top);
+    return (within[0] || tops.sort((a, b) => a.top - b.top)[0]).o;
   }
 
   // 语言水平：各家叫法不一样。找不到同样说法时，「精通」= 紧挨着「母语」、比它低一档的那个选项
@@ -834,7 +834,7 @@
         if (!opts.overwrite && el.value.trim()) { report.kept++; continue; }
         const isDate = hit.field.type === 'date' || hit.field.type === 'month';
         let out = isDate ? formatDate(value, el) : value;
-        if (hit.field.percent && /^\d+(\.\d+)?$/.test(out)) out = `前${out}%`; // 文本框里写成「前15%」
+        if (hit.field.percent && /^\d+(\.\d+)?%?$/.test(out)) out = `前${out.replace('%', '')}%`; // 文本框里写成「前20%」
         if ((el.type === 'date' || el.type === 'month') && !/^\d{4}-\d{2}(-\d{2})?$/.test(out)) { report.unknown++; continue; }
         if (el.type === 'number' && isNaN(Number(out))) { report.unknown++; continue; }
         setNative(el, out);
