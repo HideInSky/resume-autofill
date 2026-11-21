@@ -109,7 +109,7 @@
           f('cities', '期望城市', null, { type: 'tiers', req: true }),
           f('city2', '第二意向城市', /第二意向|第二志愿.*(城市|地)/, { hidden: true }),
           f('city3', '第三意向城市', /第三意向|第三志愿.*(城市|地)/, { hidden: true }),
-          f('city', '第一意向城市', /期望城市|意向城市|期望地点|期望工作地|意向工作地|工作意向地|preferred (city|location)/, { hidden: true }),
+          f('city', '第一意向城市', /期望城市|意向城市|期望地点|期望工作地|期望工作城市|意向工作地|工作意向地|preferred (city|location)/, { hidden: true }),
           f('referral', '推荐方式（有无内推）', /推荐方式|内推方式|是否内推/, { fallback: '无', pre: true, placeholder: '如 无 / 内推' }),
           f('source', '招聘信息来源', /信息来源|招聘来源|了解到|获知|渠道|how did you hear|source/, { fallback: '官网', placeholder: '如 官网 / 牛客网', any: true }),
           f('available', '最快到岗时间', /到岗|入职时间|可入职|available|earliest start|notice period/),
@@ -181,6 +181,8 @@
           }),
           f('gender', '性别', /性别|gender|\bsex\b/, { type: 'select', options: ['', '男', '女'], req: true }),
           f('birthday', '出生日期', /出生|生日|birth|\bdob\b/, { type: 'date', req: true }),
+          // 年龄不用填：按出生日期算
+          f('age', '年龄', /^年龄$|^周岁$|^age$/, { hidden: true }),
           f('marital', '婚姻状况', /婚姻|婚否|marital/, { type: 'select', options: ['', '未婚', '已婚', '离异', '丧偶'], fallback: '未婚' }),
           f('phoneCode', '手机区号', /手机|电话|phone|mobile|区号|area code|country code/, { only: 'select', placeholder: '如 +86', fallback: '+86' }),
           f('phone', '手机号', /手机|电话|联系方式|phone|mobile|\btel\b|cell/, { only: 'text', req: true }),
@@ -200,7 +202,7 @@
             options: ['', '中共党员', '中共预备党员', '共青团员', '群众', '其他'],
             req: true,
           }),
-          f('hometown', '籍贯 / 户口所在地', /籍贯|户口|户籍|生源地|hometown/, { placeholder: '填省份', req: true }),
+          f('hometown', '籍贯 / 户口所在地', /籍贯|户口|户籍|生源地|家乡|hometown/, { placeholder: '填省份', req: true }),
           f('home', '家庭所在地', /家庭所在地|家庭住址|家庭地址|家庭所在/, { placeholder: '省/市，如 浙江/杭州' }),
           // pre: 题目里带「紧急」，要先于「别人的信息一律不填」的规则判断
           f('emergencyPhone', '紧急联系人电话', /紧急联系人?.*(电话|手机|联系方式|号码)|emergency.*(phone|number)/, { pre: true }),
@@ -211,9 +213,9 @@
           f('github', 'GitHub', /git ?hub/),
           f('website', '个人主页 / 作品集', /个人主页|个人网站|博客|作品集|website|portfolio|blog|homepage/),
           f('province', '现居省份', /所在省|省份|province/, { generic: 'province' }),
-          f('city', '现居城市', /现居|居住|所在城市|现所在地|目前所在地|current (city|location)|城市|\bcity\b|location/, {
+          f('city', '现居城市', /现居|居住|所在城市|现所在地|目前所在地|所在地点|^所在地$|current (city|location)|城市|\bcity\b|location/, {
             generic: 'city',
-            early: /现居|居住|目前所在地|current (city|location)/,
+            early: /现居|居住|目前所在地|所在地点|^所在地$|current (city|location)/,
           }),
         ],
       },

@@ -302,7 +302,7 @@
 
   // —— 自定义下拉框：点开 → 等选项出现 → 点选项；找不到就输入关键字过滤再找 ——
   const OPTION_SEL =
-    '[role="option"],li[class*="item"],li[class*="option"],[class*="select-item"],[class*="select__list__item"],[class*="select-option"],[class*="dropdown"] [class*="option"],[class*="cascader-node"]';
+    '[role="option"],li[class*="item"],li[class*="option"],[class*="select-item"],[class*="select__list__item"],[class*="select-option"],[class*="tree__node__label"],[class*="tree-node__label"],[class*="tree-node-content-wrapper"],[class*="dropdown"] [class*="option"],[class*="cascader-node"]';
   const visibleOptions = () => [...document.querySelectorAll(OPTION_SEL)].filter(visible);
   const toOptions = (els) => els.map((el) => ({ el, text: norm(el.textContent) }));
   function queries(value) {
@@ -362,7 +362,14 @@
     }
     if (hit) {
       press(hit.el);
-      await sleep(120);
+      await sleep(320);
+      // 多选的下拉选完不会自己收起来：帮它收起
+      if (fresh().length) {
+        pressKey(typer || el, 'Escape');
+        press(document.body);
+        await sleep(220);
+        if (fresh().length) press(trigger);
+      }
       return true;
     }
     pressKey(el, 'Escape');
@@ -549,6 +556,13 @@
     const sectionById = Object.fromEntries(S.sections.map((s) => [s.id, s]));
     // 自带一条的段落（语言）：用户从没动过时，当作有一条用默认值的
     for (const sec of S.sections) if (sec.seed && profile[sec.id] === undefined) profile[sec.id] = [{}];
+    // 年龄按出生日期算（周岁）
+    const born = /^(\d{4})-(\d{2})(?:-(\d{2}))?/.exec((profile.basic || {}).birthday || '');
+    if (born) {
+      const now = new Date();
+      const hadBirthday = now.getMonth() + 1 > +born[2] || (now.getMonth() + 1 === +born[2] && now.getDate() >= +(born[3] || 1));
+      profile.basic.age = String(now.getFullYear() - +born[1] - (hadBirthday ? 0 : 1));
+    }
     const customs = (profile.custom || [])
       .map((c) => ({
         keys: String(c.keywords || '')
@@ -768,7 +782,7 @@
       }
 
       let kind = isRadio ? 'radio' : el.tagName === 'SELECT' ? 'select' : isCustomSelect(el) ? 'custom' : 'text';
-      if (kind === 'text' && inDatePicker(el) && (el.readOnly || el.closest('.ant-picker,.el-date-editor,[class*="range-picker"],[class*="date-picker-input"]'))) kind = 'picker';
+      if (kind === 'text' && inDatePicker(el) && (el.readOnly || el.closest('.ant-picker,.el-date-editor,[class*="range-picker"],[class*="picker-input"]'))) kind = 'picker';
       if (kind === 'text' && (el.readOnly || el.type === 'search')) continue;
 
       // 即使这个控件不用再填，也要走一遍识别，才能数清「现在是第几段经历」
