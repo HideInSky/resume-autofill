@@ -104,6 +104,17 @@
     return fits.length ? fits[0].o : pickOption(options, '其他');
   }
 
+  // 语言水平：各家叫法不一样。找不到同样说法时，「精通」= 紧挨着「母语」、比它低一档的那个选项
+  function pickLevel(options, value) {
+    const hit = pickOption(options, value);
+    if (hit || !/精通/.test(value)) return hit;
+    const real = options.filter((o) => o.text);
+    const i = real.findIndex((o) => /母语|native/.test(o.text));
+    if (i < 0) return null;
+    return i > 0 ? real[i - 1] : real[i + 1] || null; // 母语排最后就取前一个，排最前就取后一个
+  }
+  const pickerFor = (field) => (field.percent ? pickPercent : field.level ? pickLevel : pickOption);
+
   // —— 找控件、读标题 ——
   const FIELD_SEL = 'input,textarea,select';
   const SKIP_TYPES = new Set(['hidden', 'submit', 'button', 'reset', 'image', 'checkbox', 'range', 'color']);
@@ -536,6 +547,8 @@
     let passNo = 0;
     const pending = (globalThis.__raPendingFiles = []);
     const sectionById = Object.fromEntries(S.sections.map((s) => [s.id, s]));
+    // 自带一条的段落（语言）：用户从没动过时，当作有一条用默认值的
+    for (const sec of S.sections) if (sec.seed && profile[sec.id] === undefined) profile[sec.id] = [{}];
     const customs = (profile.custom || [])
       .map((c) => ({
         keys: String(c.keywords || '')
@@ -782,7 +795,7 @@
       } else if (kind === 'select') {
         if (!opts.overwrite && el.selectedIndex > 0 && el.value !== '') { report.kept++; continue; }
         const options = [...el.options].filter((o) => o.value !== '').map((o) => ({ el: o, text: norm(o.textContent) }));
-        const opt = (hit.field.percent ? pickPercent : pickOption)(options, value);
+        const opt = pickerFor(hit.field)(options, value);
         if (!opt) { report.unknown++; continue; }
         setNative(el, opt.el.value);
         highlight(el);
@@ -797,7 +810,7 @@
         const shell = el.tagName === 'INPUT' && el.closest('[class*="select"]:not([class*="search"]):not([class*="selection"]):not([class*="input"])');
         if (!chosen && shell && !shell.querySelector('[class*="placeholder"]') && shell.textContent.trim()) chosen = shell;
         if (!opts.overwrite && ((el.value || '').trim() || (chosen && chosen.textContent.trim()))) { report.kept++; continue; }
-        if (!(await fillCustomSelect(el, value, hit.field.any, hit.field.percent ? pickPercent : pickOption))) { report.unknown++; continue; }
+        if (!(await fillCustomSelect(el, value, hit.field.any, pickerFor(hit.field)))) { report.unknown++; continue; }
         highlight(el);
       } else if (kind === 'picker') {
         if (!opts.overwrite && el.value.trim()) { report.kept++; continue; }
@@ -827,7 +840,8 @@
       if (last && count(last.id) <= last.used) addFailed.add(last.id); // 点了但没多出能认的一段
       last = null;
       for (const id of opts.dry ? [] : Object.keys(ADD_SECTIONS)) {
-        const have = (profile[id] || []).filter((o) => o && Object.values(o).some(Boolean)).length;
+        const hasDefaults = sectionById[id].fields.some((x) => x.fallback);
+        const have = (profile[id] || []).filter((o) => o && (hasDefaults || Object.values(o).some(Boolean))).length;
         if (have <= count(id) || addFailed.has(id)) continue;
         const btn = findAddButton(id);
         if (!btn) continue;

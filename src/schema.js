@@ -1,5 +1,6 @@
 // 字段定义：资料编辑页、弹窗和填表引擎共用这一份。
 // match / not 是对「表单字段描述」（label、placeholder、name、id 等，已转小写）做匹配的正则。
+// level: 语言水平。选项里没有同样的说法时，「精通」选「母语」旁边低一档的那个。
 // any: 选项里找不到对应的就随便选第一个（比如「从哪里知道我们的」）。
 // req: 必填（资料页标 * ，没填标红）。fallback: 没填时用的默认值（资料页标蓝）。hidden: 不在资料页显示。
 // only: 'select' 只匹配下拉/单选，only: 'text' 只匹配输入框（同一个标题下有两个控件时用来区分）。
@@ -154,12 +155,13 @@
       {
         id: 'language',
         title: '语言能力（逐项）',
+        seed: true, // 一开始就自带一条（内容用下面的默认值）
         hint: '网站把语言拆成「语言 / 熟练程度 / 证书 / 成绩」几栏时用这里；只有一个大文本框时用「其他」里的语言能力。',
         repeat: true,
         fields: [
-          f('name', '语言', /语言名称|语种|语言类别|^语言$/, { placeholder: '如 英语' }),
-          f('level', '熟练程度 / 听说能力', /熟练程度|掌握程度|精通程度|语言水平|听说|口语|proficien/, { placeholder: '如 熟练 / 精通' }),
-          f('level2', '读写能力（不填则同上）', /读写/, { alt: 'level' }),
+          f('name', '语言', /语言名称|语种|语言类别|^语言$/, { fallback: '英语' }),
+          f('level', '熟练程度 / 听说能力', /熟练程度|掌握程度|精通程度|语言水平|听说|口语|proficien/, { fallback: '精通', level: true, placeholder: '如 熟练 / 精通' }),
+          f('level2', '读写能力（不填则同上）', /读写/, { alt: 'level', level: true }),
           f('cert', '证书', null, { generic: 'cert', placeholder: '如 英语六级 / 托福 / 雅思' }),
           f('score', '成绩', null, { generic: 'score' }),
         ],

@@ -199,7 +199,7 @@ function renderSection(sec) {
     return card;
   }
 
-  if (!Array.isArray(profile[sec.id])) profile[sec.id] = [];
+  if (!Array.isArray(profile[sec.id])) profile[sec.id] = sec.seed ? [{}] : [];
   const list = profile[sec.id];
   const rerender = () => card.replaceWith(renderSection(sec));
   list.forEach((item, i) => {
