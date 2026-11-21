@@ -83,7 +83,7 @@
           f('major', '专业', /专业|major|field of study|discipline|area of study/, { not: /技能|skill|排名|证书|资格/, req: true }),
           f('college', '学院 / 院系', /学院|院系|faculty/, { req: true }),
           // percent: 资料里选一档；填表时在网站给的选项里选「不超过这一档」的最大那个
-          f('rank', '成绩排名（前百分之几）', /排名|rank/, { type: 'select', options: ['', '5%', '10%', '20%', '30%', '40%', '50%'], percent: true }),
+          f('rank', '成绩排名（前百分之几）', /排名|rank/, { type: 'select', options: ['', '5%', '10%', '20%', '30%', '40%', '50%'], percent: true, req: true }),
           f('gpa', 'GPA / 绩点', /gpa|绩点|平均分|平均成绩|学业成绩/),
           f('mode', '学制', /学制|学历类型|学习形式|培养方式/, { type: 'select', options: ['', '全日制', '非全日制'], fallback: '全日制' }),
           f('cadre', '是否学生干部', /是否.*学生干部|担任.*学生干部/, { type: 'select', options: YES_NO, not: /级别|名称|职务/, fallback: '否' }),
@@ -202,8 +202,7 @@
             options: ['', '中共党员', '中共预备党员', '共青团员', '群众', '其他'],
             req: true,
           }),
-          f('hometown', '籍贯 / 户口所在地', /籍贯|户口|户籍|生源地|家乡|hometown/, { placeholder: '填省份', req: true }),
-          f('home', '家庭所在地', /家庭所在地|家庭住址|家庭地址|家庭所在/, { placeholder: '省/市，如 浙江/杭州' }),
+          f('hometown', '籍贯 / 户口所在地', /籍贯|户口|户籍|生源地|家乡|家庭所在地|家庭住址|家庭地址|hometown/, { placeholder: '省，或 省/市，如 浙江/杭州', req: true }),
           // pre: 题目里带「紧急」，要先于「别人的信息一律不填」的规则判断
           f('emergencyPhone', '紧急联系人电话', /紧急联系人?.*(电话|手机|联系方式|号码)|emergency.*(phone|number)/, { pre: true }),
           f('emergencyName', '紧急联系人', /紧急联系人|emergency contact/, { pre: true, not: /电话|手机|联系方式|号码|关系|phone|relation/ }),

@@ -444,7 +444,18 @@ function importAI(text, replace) {
   for (const sec of AI_SECTIONS()) {
     const raw = data[sec.id];
     if (sec.repeat) {
-      const items = (Array.isArray(raw) ? raw : []).map((r) => cleanItem(sec, r)).filter((o) => Object.keys(o).length);
+      let items = (Array.isArray(raw) ? raw : []).map((r) => cleanItem(sec, r)).filter((o) => Object.keys(o).length);
+      // 同一段经历（学校 / 公司 / 项目名对得上）：保留你以前补过、这次简历里没有的内容，其余用新的
+      const anchor = { education: 'school', work: 'company', project: 'name', language: 'name' }[sec.id];
+      const old = Array.isArray(profile[sec.id]) ? profile[sec.id] : [];
+      const flat = (v) => String(v || '').toLowerCase().replace(/[\s·｜|,，.。()（）-]/g, '');
+      const same = (a, b) => flat(a) && flat(b) && (flat(a).includes(flat(b)) || flat(b).includes(flat(a)));
+      if (!replace && anchor) {
+        items = items.map((it) => {
+          const prev = old.find((o) => same(o[anchor], it[anchor]));
+          return prev ? { ...prev, ...it } : it;
+        });
+      }
       if (items.length || replace) profile[sec.id] = items;
       count += items.reduce((n, o) => n + Object.keys(o).length, 0);
     } else {
