@@ -206,7 +206,7 @@
     applyBtn.addEventListener('click', () => applyTo(j, d));
     const chips = [j[4], j[5] !== '不限' ? j[5] : '', j[6]].filter(Boolean);
     $('j-detail').replaceChildren(
-      h(
+      ...[h(
         'header',
         { className: 'j-d-head' },
         logo(name, true),
@@ -225,7 +225,8 @@
       d.d ? h('section', {}, h('h2', { textContent: '岗位职责' }), h('div', { className: 'j-text', textContent: d.d })) : null,
       d.r ? h('section', {}, h('h2', { textContent: '任职要求' }), h('div', { className: 'j-text', textContent: d.r })) : null,
       !d.d && !d.r ? h('p', { className: 'muted', textContent: '这个岗位的详细介绍请到官网查看。' }) : null,
-      h('p', {}, h('a', { href: d.u, target: '_blank', rel: 'noopener', textContent: '在官网查看原文 ↗' }))
+      h('p', {}, h('a', { href: d.u, target: '_blank', rel: 'noopener', textContent: '在官网查看原文 ↗' })),
+      ].filter(Boolean)
     );
     $('j-detail').scrollTop = 0;
   }
