@@ -62,16 +62,40 @@
     };
     const def = book.list[book.active];
     pop.append(
-      item('查看', () => open(f)),
-      item('下载', () => h('a', { href: urlOf(f), download: f.name }).click()),
-      def && def.resume !== f.name ? item(`设为「${def.name}」使用的简历`, () => useFor(f)) : null,
-      item('删除', () => remove([f]), 'danger')
+      ...[
+        item('查看', () => open(f)),
+        item('重命名', () => rename(f)),
+        item('下载', () => h('a', { href: urlOf(f), download: f.name }).click()),
+        def && !usedBy(f).includes(def.name) ? item(`设为「${def.name}」使用的简历`, () => useFor(f)) : null,
+        item('删除', () => remove([f]), 'danger'),
+      ].filter(Boolean)
     );
     const d = h('details', { className: 'menu dots' }, h('summary', { ariaLabel: '更多操作', title: '更多操作', textContent: '⋮' }), pop);
     d.addEventListener('click', (e) => e.stopPropagation());
     return d;
   }
   const open = (f) => window.open(urlOf(f), '_blank');
+  // 改名：资料方案里选的简历、投递记录里的「简历版本」一起跟着改
+  async function rename(f) {
+    const extOf = (/\.\w+$/.exec(f.name) || [''])[0];
+    const base = f.name.slice(0, f.name.length - extOf.length);
+    const input = (prompt('新的名字', base) || '').trim().replace(/[\\/:*?"<>|]/g, '');
+    if (!input || input === base) return;
+    const name = input + extOf;
+    if (files.resumes.some((x) => x !== f && x.name === name)) return flash('已经有同名的文件了');
+    const old = f.name;
+    f.name = name;
+    await Vault.saveFiles(files);
+    book = await Vault.book();
+    let changed = false;
+    for (const p of book.list) if (p.resume === old) (p.resume = name), (changed = true);
+    if (changed) await Vault.saveBook(book);
+    const rows = await Apps.list();
+    if (rows.some((r) => r.resume === old)) await Apps.save(rows.map((r) => (r.resume === old ? { ...r, resume: name } : r)));
+    document.dispatchEvent(new Event('ra-files-changed'));
+    render();
+    flash(`已改名为「${input}」`);
+  }
   async function useFor(f) {
     book = await Vault.book();
     book.list[book.active].resume = f.name;

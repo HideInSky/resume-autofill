@@ -9,7 +9,7 @@
     if (!has(v)) v = 'profile';
     for (const p of panels) p.hidden = p.dataset.viewPanel !== v;
     for (const a of links) a.toggleAttribute('aria-current', a.dataset.view === v);
-    document.title = { profile: '我的资料', jobs: '岗位', tracker: '投递记录', documents: '文档' }[v] + ' · 简历自动填';
+    document.title = { profile: '我的资料', jobs: '岗位', tracker: '投递记录', documents: '文档' }[v] + ' · 投简历神器';
     document.body.dataset.view = v;
     document.dispatchEvent(new CustomEvent('ra-view', { detail: v }));
   }

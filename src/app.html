@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>简历自动填</title>
+  <title>投简历神器</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="app">
   <nav class="topbar" aria-label="主导航">
-    <a class="brand" href="#profile"><img src="../icons/icon.svg" alt="" width="26" height="26"><span>简历自动填</span></a>
+    <a class="brand" href="#profile"><img src="../icons/icon.svg" alt="" width="26" height="26"><span>投简历神器</span></a>
     <div class="topnav">
       <a href="#profile" data-view="profile">
         <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="6.5" r="3.2"/><path d="M3.5 17c.8-3.3 3.4-5 6.5-5s5.7 1.7 6.5 5"/></svg>我的资料</a>
@@ -132,6 +132,10 @@
     <div class="t-bar">
       <div class="seg" id="t-scope" role="tablist" aria-label="进行中 / 已归档"></div>
       <input id="t-search" class="search" type="search" placeholder="搜索公司或职位" aria-label="搜索公司或职位">
+      <div class="seg" id="t-view" role="tablist" aria-label="显示方式">
+        <button data-view="board" role="tab">看板</button>
+        <button data-view="list" role="tab">列表</button>
+      </div>
       <div class="t-actions">
         <details class="menu">
           <summary class="btn">表格文件</summary>
