@@ -1,6 +1,6 @@
 // 后台：只负责「进入页面自动填写」。
 // 你授权过的网站（浏览器的站点权限）= 开了自动填写的网站；没授权的网站，扩展完全碰不到。
-importScripts('vault.js', 'run.js');
+importScripts('vault.js', 'apps.js', 'run.js');
 
 // 让 auto.js 只在已授权的网站上运行
 let syncing = Promise.resolve();
@@ -43,8 +43,23 @@ async function autofill(sender) {
   if (n) badge(tabId, String(n), '#15803d');
 }
 
-// 标签页关掉后，忘掉它单独选的资料方案
+// 点工具栏图标：直接在侧边栏打开（不会像弹窗那样一点网页就关掉）
+if (chrome.sidePanel) chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+
+// 页面换了（刷新 / 跳转）：上一页的填写清单作废
+async function forgetFill(tabId) {
+  const { fills = {} } = await chrome.storage.session.get('fills');
+  if (!(tabId in fills)) return;
+  delete fills[tabId];
+  await chrome.storage.session.set({ fills });
+}
+chrome.tabs.onUpdated.addListener((tabId, change) => {
+  if (change.status === 'loading') forgetFill(tabId);
+});
+
+// 标签页关掉后，忘掉它单独选的资料方案和填写清单
 chrome.tabs.onRemoved.addListener(async (tabId) => {
+  forgetFill(tabId);
   const { tabProfiles = {} } = await chrome.storage.session.get('tabProfiles');
   if (tabId in tabProfiles) {
     delete tabProfiles[tabId];
@@ -54,4 +69,5 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
 
 chrome.runtime.onMessage.addListener((msg, sender) => {
   if (msg && msg.type === 'autofill' && sender.tab) autofill(sender).catch((e) => console.warn('autofill', e));
+  if (msg && msg.type === 'submitted' && sender.tab) Apps.submitted(sender.tab.url || msg.url).catch((e) => console.warn('submitted', e));
 });

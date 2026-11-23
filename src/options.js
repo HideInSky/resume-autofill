@@ -168,6 +168,61 @@ function tiersControl(field, data) {
   return wrap;
 }
 
+// 现居地：省 / 市 / 区县 三个连着的下拉框，存成 province / city / district
+function regionControl(field, data) {
+  const R = globalThis.CN_REGIONS || {};
+  const bare = (n) => String(n || '').replace(/(特别行政区|自治区|自治州|自治县|地区|省|市|区|县|盟|旗)$/, '');
+  const find = (list, v) => (v ? list.find((n) => n === v) || list.find((n) => bare(n).length >= 2 && bare(n) === bare(v)) || '' : '');
+  // 以前手写的「常州」「金坛」：在名单里找到它，把省和市补上
+  const loose = [data.district, data.city].filter(Boolean);
+  if (!find(Object.keys(R), data.province) && loose.length) {
+    outer: for (const v of loose) {
+      for (const [p, cities] of Object.entries(R)) {
+        for (const [c, ds] of Object.entries(cities)) {
+          const d = find(ds, v);
+          if (find([c], v) || d) {
+            Object.assign(data, { province: p, city: c, district: d || '' });
+            break outer;
+          }
+        }
+      }
+    }
+  }
+  const wrap = el('div', { className: 'field wide' });
+  function render() {
+    const p = find(Object.keys(R), data.province);
+    const cities = p ? Object.keys(R[p]) : [];
+    const c = find(cities, data.city);
+    const ds = c ? R[p][c] : [];
+    const d = find(ds, data.district);
+    const make = (items, cur, hint, key) => {
+      const s = el('select', { ariaLabel: hint }, [el('option', { value: '', textContent: hint }), ...items.map((n) => el('option', { value: n, textContent: n }))]);
+      s.value = cur;
+      s.disabled = !items.length;
+      s.classList.toggle('need', !cur && items.length > 0);
+      s.addEventListener('change', () => {
+        data[key] = s.value;
+        if (key === 'province') data.city = data.district = '';
+        if (key === 'city') data.district = '';
+        // 直辖市：市只有一个，直接替用户选上
+        const only = key === 'province' && s.value ? Object.keys(R[s.value]) : [];
+        if (only.length === 1) data.city = only[0];
+        queueSave();
+        render();
+      });
+      return s;
+    };
+    const title = el('span', { textContent: field.label }, [el('b', { className: 'req', textContent: ' *' })]);
+    wrap.replaceChildren(
+      title,
+      el('div', { className: 'region' }, [make(Object.keys(R), p, '省 / 直辖市', 'province'), make(cities, c, '市', 'city'), make(ds, d, '区 / 县', 'district')]),
+      el('span', { className: 'muted', textContent: '网站要「省 / 市 / 区」一级一级选的会照这个点；只问城市的填「市」这一项。' })
+    );
+  }
+  render();
+  return wrap;
+}
+
 function grid(sec, data) {
   return el(
     'div',
@@ -179,6 +234,8 @@ function grid(sec, data) {
       .map((f) =>
         f.type === 'tiers'
           ? tiersControl(f, data)
+          : f.type === 'region'
+          ? regionControl(f, data)
           : control(f, data[f.key], (v) => {
               data[f.key] = v;
               queueSave();
@@ -195,7 +252,7 @@ function missingCount() {
     for (const item of items) {
       for (const f of sec.fields) {
         if (!f.req || f.fallback) continue;
-        if (f.type === 'tiers' ? !(item.cities && item.cities[0] && item.cities[0].length) : !item[f.key]) n++;
+        if (f.type === 'tiers' ? !(item.cities && item.cities[0] && item.cities[0].length) : f.type === 'region' ? !item.province : !item[f.key]) n++;
       }
     }
   }
@@ -212,7 +269,7 @@ function renderSection(sec) {
     return card;
   }
 
-  if (!Array.isArray(profile[sec.id])) profile[sec.id] = sec.seed ? [{}] : [];
+  if (!Array.isArray(profile[sec.id]) || (sec.seed && !profile[sec.id].length)) profile[sec.id] = sec.seed ? [{}] : [];
   const list = profile[sec.id];
   const rerender = () => card.replaceWith(renderSection(sec));
   list.forEach((item, i) => {
@@ -370,7 +427,7 @@ $('prof-resume').addEventListener('change', (e) => {
 });
 
 // —— 让 AI 填：通用格式（提示词和模板都从字段定义生成，新增字段会自动带上）——
-const aiField = (f) => !f.hidden && f.type !== 'tiers';
+const aiField = (f) => !f.hidden && f.type !== 'tiers' && f.type !== 'region';
 const AI_SECTIONS = () => SECTIONS.filter((s) => s.id !== 'account' && s.id !== 'custom');
 function buildTemplate() {
   const out = {};

@@ -2,6 +2,7 @@
 // match / not 是对「表单字段描述」（label、placeholder、name、id 等，已转小写）做匹配的正则。
 // level: 语言水平。选项里没有同样的说法时，「精通」选「母语」旁边低一档的那个。
 // any: 选项里找不到对应的就随便选第一个（比如「从哪里知道我们的」）。
+// lead: 「多久能入职」，填日期时换算成 今天 + 这么久。
 // req: 必填（资料页标 * ，没填标红）。fallback: 没填时用的默认值（资料页标蓝）。hidden: 不在资料页显示。
 // only: 'select' 只匹配下拉/单选，only: 'text' 只匹配输入框（同一个标题下有两个控件时用来区分）。
 // 想支持新的字段或新的网站叫法，改这里就行。
@@ -13,7 +14,7 @@
 
   globalThis.RESUME_SCHEMA = {
     // 命中这些的字段一律不填（别人的信息、验证码、搜索框等）
-    skip: /紧急|emergency|推荐人|内推|referr|referee|父亲|母亲|家庭成员|亲属|relative|配偶|spouse|导师|mentor|supervisor|证明人|证明电话|验证码|captcha|verification code|\botp\b|搜索|search|coupon|promo/,
+    skip: /紧急|emergency|推荐人|内推|\breferr|referee|父亲|母亲|家庭成员|亲属|relative|配偶|spouse|导师|mentor|supervisor|证明人|证明电话|验证码|captcha|verification code|\botp\b|搜索|search|coupon|promo|与 ?ai|ai ?(工具|协作|应用)/,
 
     // 没有明确归属的通用字段，按「当前所在的经历段落」决定填哪一段
     generic: {
@@ -23,10 +24,11 @@
       country: /所在国家|国家|country/,
       province: /省份|province/,
       city: /城市|地点|所在地|city|location/,
-      cert: /证书|certificate/,
+      // score 排在 cert 前面：「外语考试」下面并排一个考试下拉框和一个分数框时，分数框先认成成绩
+      score: /成绩|分数|score/,
+      cert: /证书|certificate|外语考试|语言考试|考试类型|考试名称/,
       // range: 一个标题下并排两个时间框（起 / 止）
       range: /起止|起讫|时间段|在校时间|就读时间|任职时间|工作时间|period|duration/,
-      score: /成绩|分数|score/,
     },
 
     // 用字段自身或外层容器的 name/id/class 判断它属于哪一段（按顺序检查）
@@ -73,7 +75,7 @@
         fields: [
           f('start', '入学时间', /入学/, { type: 'month', generic: 'start', req: true }),
           f('end', '毕业时间', /毕业时间|毕业日期|毕业年|预计毕业|graduat/, { type: 'month', generic: 'end', req: true }),
-          f('school', '学校', /学校|院校|school|university|college|institution/, { not: NOT_ATTR, anchor: true, req: true }),
+          f('school', '学校', /学校|院校|school|university|college|institution/, { not: new RegExp(NOT_ATTR.source + '|绩点|gpa'), anchor: true, req: true }),
           f('degree', '学历 / 学位', /学历|学位|degree|education level/, {
             type: 'select',
             options: ['', '大专', '本科', '硕士', '博士', '其他'],
@@ -84,13 +86,14 @@
           f('college', '学院 / 院系', /学院|院系|faculty/, { req: true }),
           // percent: 资料里选一档；填表时在网站给的选项里选「不超过这一档」的最大那个
           f('rank', '成绩排名（前百分之几）', /排名|rank/, { type: 'select', options: ['', '5%', '10%', '20%', '30%', '40%', '50%'], percent: true, req: true }),
+          f('gpaScale', 'GPA 满分', /满绩|满分|gpa base|gpa scale/, { placeholder: '如 4.0 / 5.0 / 100' }),
           f('gpa', 'GPA / 绩点', /gpa|绩点|平均分|平均成绩|学业成绩/),
           f('mode', '学制', /学制|学历类型|学习形式|培养方式/, { type: 'select', options: ['', '全日制', '非全日制'], fallback: '全日制' }),
           f('cadre', '是否学生干部', /是否.*学生干部|担任.*学生干部/, { type: 'select', options: YES_NO, not: /级别|名称|职务/, fallback: '否' }),
           f('keyLab', '是否国家重点实验室', /重点实验室/, { type: 'select', options: YES_NO, not: /所在|名称/, fallback: '否' }),
           f('country', '学校所在国家', null, { generic: 'country', placeholder: '如 中国 / 美国' }),
           f('province', '学校所在省份 / 州', null, { generic: 'province' }),
-          f('city', '学校所在城市', null, { generic: 'city' }),
+          f('city', '学校所在城市', /就读地|就读城市/, { generic: 'city' }),
           f('description', '主修课程 / 在校经历', /主修|课程|coursework|courses/, {
             type: 'textarea',
             generic: 'description',
@@ -103,7 +106,7 @@
         fields: [
           f('position', '应聘职位', /应聘|期望职位|期望岗位|意向职位|意向岗位|求职意向|desired (position|role|title)|applying for/),
           f('salary', '期望薪资', /薪资|薪酬|月薪|年薪|salary|compensation/),
-          f('relocate', '是否接受工作地变更', /工作地变更|工作地点变更|接受.*(调动|外派|派遣)|工作派遣|全球范围|relocat/, { type: 'select', options: YES_NO, fallback: '是' }),
+          f('relocate', '是否接受工作地变更', /工作地变更|工作地点变更|接受.*(调动|外派|派遣)|接受其他(城市|工作地|地点)|工作派遣|全球范围|relocat/, { type: 'select', options: YES_NO, fallback: '是', force: true }),
           f('acceptArea', '可接受工作地', /可接受工作地/, { placeholder: '如 全国各地', fallback: '全国各地' }),
           // 期望城市在资料页里是三层可拖动的卡片（cities）；填表前按「从上到下、从左到右」展开成第一 / 二 / 三意向
           f('cities', '期望城市', null, { type: 'tiers', req: true }),
@@ -112,8 +115,17 @@
           f('city', '第一意向城市', /期望城市|意向城市|期望地点|期望工作地|期望工作城市|意向工作地|工作意向地|preferred (city|location)/, { hidden: true }),
           f('referral', '推荐方式（有无内推）', /推荐方式|内推方式|是否内推/, { fallback: '无', pre: true, placeholder: '如 无 / 内推' }),
           f('source', '招聘信息来源', /信息来源|招聘来源|了解到|获知|渠道|how did you hear|source/, { fallback: '官网', placeholder: '如 官网 / 牛客网', any: true }),
-          f('available', '最快到岗时间', /到岗|入职时间|可入职|available|earliest start|notice period/),
-          f('adjust', '是否服从调剂 / 调配', /服从.*(调配|调剂|分配)|接受调剂/, { type: 'select', options: YES_NO, fallback: '是' }),
+          // 投实习岗位时才会问到
+          f('internLength', '实习时长', /实习时长|实习周期|实习期限|可实习(时长|时间|多久)/, { type: 'select', options: ['', '1个月', '2个月', '3个月', '3-6个月', '6个月以上'], fallback: '6个月以上' }),
+          f('internDays', '每周可出勤天数', /出勤天数|到岗天数|每周.*(出勤|到岗|实习).*天|每周.*天数/, { type: 'select', options: ['', '3天', '4天', '5天'], fallback: '5天' }),
+          // lead: 资料里选「多久能入职」。网站要日期就填 今天 + 这么久；要文字就直接写「2周」
+          f('available', '最早可入职时间（从今天算起）', /到岗|入职时间|可入职|多久.*入职|available|earliest start|notice period/, {
+            type: 'select',
+            options: ['', '随时', '1周', '2周', '1个月', '2个月', '3个月', '6个月'],
+            lead: true,
+            req: true,
+          }),
+          f('adjust', '是否服从调剂 / 调配', /服从.*(调配|调剂|分配)|接受调剂/, { type: 'select', options: YES_NO, fallback: '是', force: true }),
         ],
       },
       {
@@ -139,8 +151,8 @@
         title: '项目经历',
         repeat: true,
         fields: [
-          f('name', '项目名称', /项目名|project (name|title)/, { req: true }),
-          f('role', '担任角色 / 职务', /项目角色|担任角色|项目职务|^职务|^角色|your role/),
+          f('name', '项目名称', /项目名|project (name|title)/, { req: true, anchor: true }),
+          f('role', '担任角色 / 职务', /项目角色|担任的?角色|项目职务|^职务|^角色|your role/),
           // alt: 这一项没填时，用同一段的另一项顶上
           f('duty', '个人职责（不填则用项目描述）', /项目职责|个人职责|本人职责|承担职责|个人贡献/, { type: 'textarea', alt: 'description' }),
           f('link', '项目链接', /项目链接|项目地址|project (url|link)/),
@@ -185,16 +197,18 @@
           f('age', '年龄', /^年龄$|^周岁$|^age$/, { hidden: true }),
           f('marital', '婚姻状况', /婚姻|婚否|marital/, { type: 'select', options: ['', '未婚', '已婚', '离异', '丧偶'], fallback: '未婚' }),
           f('phoneCode', '手机区号', /手机|电话|phone|mobile|区号|area code|country code/, { only: 'select', placeholder: '如 +86', fallback: '+86' }),
-          f('phone', '手机号', /手机|电话|联系方式|phone|mobile|\btel\b|cell/, { only: 'text', req: true }),
-          f('email', '邮箱', /邮箱|邮件|e ?mail/, { req: true }),
+          f('phone', '手机号', /手机|电话|联系方式|phone|mobile|\btel\b|cell/, { only: 'text', req: true, force: true }),
+          // force: 网站上已有的和资料里的不一样时，以资料为准（网站常常存着旧的学校邮箱）
+          f('email', '邮箱', /邮箱|邮件|e ?mail/, { req: true, force: true, placeholder: '常用的个人邮箱，如 Gmail / QQ 邮箱' }),
           f('wechat', '微信', /微信|we ?chat|weixin/),
-          f('idType', '证件类型', /证件类型|^证件$|id type|document type/, {
+          f('qq', 'QQ 号', /^qq|qq ?号|\bqq\b/),
+          f('idType', '证件类型', /证件类型|^证件$|^个人证件$|id type|document type/, {
             only: 'select',
             type: 'select',
             options: ['', '身份证', '护照', '港澳居民来往内地通行证', '台湾居民来往大陆通行证'],
             fallback: '身份证',
           }),
-          f('idNumber', '证件号码', /身份证|证件号|^证件$|id card|identity (card|number)|national id/, { only: 'text', req: true }),
+          f('idNumber', '证件号码', /身份证|证件号|^证件$|^个人证件$|id card|identity (card|number)|national id/, { only: 'text', req: true }),
           f('idExpire', '证件有效期', /证件有效期|有效期/, { type: 'date' }),
           f('ethnicity', '民族', /民族/, { placeholder: '如 汉族', fallback: '汉族' }),
           f('political', '政治面貌', /政治面貌|political/, {
@@ -211,10 +225,14 @@
           f('linkedin', 'LinkedIn', /linked ?in|领英/),
           f('github', 'GitHub', /git ?hub/),
           f('website', '个人主页 / 作品集', /个人主页|个人网站|博客|作品集|website|portfolio|blog|homepage/),
-          f('province', '现居省份', /所在省|省份|province/, { generic: 'province' }),
-          f('city', '现居城市', /现居|居住|所在城市|现所在地|目前所在地|所在地点|^所在地$|current (city|location)|城市|\bcity\b|location/, {
+          // 现居地在资料页里是 省 / 市 / 区县 三个下拉框（region），存到下面三项里
+          f('region', '现居地（省 / 市 / 区县）', null, { type: 'region', req: true }),
+          f('province', '现居省份', /所在省|省份|province/, { generic: 'province', hidden: true }),
+          f('district', '现居区县', /所在区县|所在区|区县|\bdistrict\b|\bcounty\b/, { hidden: true }),
+          f('city', '现居城市', /现居|居住|所在城市|现所在地|目前所在地|当前所在地|所处地|所在地点|^所在地$|current (city|location)|城市|\bcity\b|location/, {
             generic: 'city',
-            early: /现居|居住|目前所在地|所在地点|^所在地$|current (city|location)/,
+            hidden: true,
+            early: /现居|居住|目前所在地|当前所在地|所处地|所在地点|^所在地$|current (city|location)/,
           }),
         ],
       },
@@ -224,11 +242,15 @@
         fields: [
           // pre: 先于「别人的信息一律不填」的规则判断（题目里带「亲属」二字）
           f('relative', '是否有亲属在应聘公司任职', /(亲属|亲戚|亲友|近亲).*(任职|工作|就职)|relatives?.*(work|employ)/, { type: 'select', options: YES_NO, pre: true, fallback: '否' }),
-          f('skills', '专业技能', /技能|特长|skills/, { type: 'textarea' }),
+          // 证明人：能证明你简历内容属实的人（老师、实习主管等），同样要先于「别人的信息不填」判断
+          f('refereePhone', '证明人电话', /证明人.*(电话|手机|联系)|证明电话/, { pre: true }),
+          f('refereeRole', '证明人身份', /证明人.*(身份|关系|职务|职位|单位)/, { pre: true, placeholder: '如 导师 / 实习主管' }),
+          f('referee', '证明人姓名', /证明人/, { pre: true, not: /电话|手机|联系|身份|关系|职务|职位|单位/ }),
+          f('skills', '专业技能', /技能|特长|skills/, { type: 'textarea', not: /自我评价/ }),
           f('languages', '语言能力', /语言能力|外语|英语水平|language/, { type: 'textarea' }),
           f('certificates', '证书', /证书|资格|certificat|license/, { type: 'textarea' }),
           f('awards', '获奖情况', /获奖|奖项|荣誉|奖励|award|honou?r/, { type: 'textarea' }),
-          f('selfIntro', '自我评价', /自我评价|自我介绍|个人简介|个人总结|个人评价|about (me|you|yourself)|summary|self (intro|evaluation|description)|cover letter/, {
+          f('selfIntro', '自我评价', /自我评价|自我介绍|个人简介|个人总结|个人评价|补充信息|其他相关信息|about (me|you|yourself)|summary|self (intro|evaluation|description)|cover letter/, {
             type: 'textarea',
           }),
         ],

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>简历自动填</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="panel">
+  <form id="locked" class="p-card stack" hidden>
+    <span class="muted">这份资料以前设置过加密，输入当时的密码解锁。</span>
+    <input id="pw" type="password" placeholder="当时设置的密码" autocomplete="off">
+    <button class="primary">解锁</button>
+    <span id="pw-msg" class="err"></span>
+  </form>
+
+  <div id="empty" class="p-card stack" hidden>
+    <b>还没有资料</b>
+    <span class="muted">先花几分钟填好，之后打开网申页面就能自动填表。</span>
+    <button id="setup" class="primary">去填写我的资料</button>
+  </div>
+
+  <div id="ready" class="stack" hidden>
+    <div class="tabs" role="tablist">
+      <button id="tab-fill" role="tab" aria-selected="true" aria-controls="pane-fill">填写</button>
+      <button id="tab-prof" role="tab" aria-selected="false" aria-controls="pane-prof">资料</button>
+    </div>
+
+    <div id="prof-row" class="field" hidden>
+      <span>这个页面用哪套资料</span>
+      <div class="pw"><select id="prof-pick"></select><button id="prof-default" type="button">设为默认</button></div>
+    </div>
+
+    <section id="pane-fill" role="tabpanel" aria-labelledby="tab-fill" class="stack">
+      <div class="p-card opts-card">
+        <b class="card-title">设置</b>
+        <div class="opts">
+          <label class="check"><input id="opt-auto" type="checkbox"> 打开网页时自动填写</label>
+          <label class="check"><input id="opt-password" type="checkbox" checked> 填写密码框</label>
+          <label class="check"><input id="opt-save" type="checkbox"> 填完后点「保存」</label>
+          <label class="check"><input id="opt-overwrite" type="checkbox"> 覆盖已有内容</label>
+        </div>
+        <button id="lock" class="link" hidden>锁定资料</button>
+      </div>
+      <div class="p-card stack">
+        <div>
+          <b id="st-title" class="st-title"></b>
+          <div id="st-sub" class="muted"></div>
+        </div>
+        <progress id="st-bar" max="1" value="0" hidden></progress>
+        <button id="fill" class="primary">填写当前页面</button>
+        <div id="result" class="muted" role="status"></div>
+        <button id="allow" hidden>允许扩展填写网页</button>
+      </div>
+
+      <div id="lists" class="stack"></div>
+
+      <p class="muted note">填完请自己检查，再保存或提交。扩展不会替你点提交。</p>
+    </section>
+
+    <section id="pane-prof" role="tabpanel" aria-labelledby="tab-prof" class="stack" hidden>
+      <div class="btn-pair">
+        <button id="edit" class="primary">编辑资料</button>
+        <button id="tracker">投递记录<span id="app-count" class="count" hidden></span></button>
+      </div>
+      <p class="tip">点任意一块就能复制，粘贴到没填上的地方。</p>
+      <div id="cards" class="stack"></div>
+    </section>
+  </div>
+
+  <script src="schema.js"></script>
+  <script src="vault.js"></script>
+  <script src="apps.js"></script>
+  <script src="run.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>

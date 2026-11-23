@@ -57,7 +57,36 @@ globalThis.runFill = async function ({ tabId, frameIds, opts }) {
       });
       report.filled.push(...((res && res.result) || []));
     }
+    report.frameId = frame.frameId;
     reports.push(report);
+  }
+  // 记下这个标签页现在的结果，侧边栏的清单读它（只在浏览器内存里，关掉浏览器就没了）
+  const { fills = {} } = await chrome.storage.session.get('fills');
+  const rec = (fills[tabId] ??= { frames: {} });
+  rec.profile = entry.name;
+  rec.at = Date.now();
+  for (const r of reports) {
+    const old = rec.frames[r.frameId] || {};
+    const state = r.state || { done: [], missing: [] };
+    // 上传的文件是之后才传进去的，不在页面快照里
+    const files = r.filled.filter((l) => l.startsWith('文件 · ')).map((l) => l.replace(/（.*$/, ''));
+    rec.frames[r.frameId] = {
+      done: [...state.done, ...files.filter((f) => !state.done.includes(f))],
+      missing: state.missing,
+      noData: [...new Set([...(old.noData || []), ...r.noData])],
+      unknown: r.unknown,
+    };
+  }
+  await chrome.storage.session.set({ fills });
+  // 投递记录：这是份申请表，就记一行（同一页面不重复记）
+  const page = reports.map((r) => r.page).find(Boolean);
+  if (page && globalThis.Apps) {
+    // 表单可能在内嵌的框里：记标签页的地址，和点「投递」时对得上
+    try {
+      const t = await chrome.tabs.get(tabId);
+      if (t.url && /^https?:/.test(t.url)) page.url = t.url;
+    } catch {}
+    await Apps.record({ ...page, resume: entry.name }).catch((e) => console.warn('record', e));
   }
   return reports;
 };
