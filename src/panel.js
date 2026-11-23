@@ -46,6 +46,7 @@ function show(which) {
 }
 $('tab-fill').addEventListener('click', () => show('fill'));
 $('tab-prof').addEventListener('click', () => show('prof'));
+if (location.hash === '#prof') show('prof');
 
 // —— 这个页面用哪套资料 ——
 function renderProfiles() {
