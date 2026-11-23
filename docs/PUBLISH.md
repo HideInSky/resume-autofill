@@ -27,6 +27,12 @@ git switch store && git merge main
 
 商店版加了联网功能后，`store` 上的 `PRIVACY.md` 和 `manifest.json` 里的 `connect-src` 要跟着改，写清楚连哪些网站、传什么。上传商店的 zip 在 `store` 分支上打包。
 
+## 商店版已经准备好的东西（store 分支）
+
+- 填写商店后台要用的全部文字（说明、权限理由、数据使用勾选项）：`store/listing.md`
+- 5 张截图（1280×800）和小宣传图（440×280）：`store/*.png`，用虚构数据生成，重新生成：`sh store/make.sh`
+- 岗位数据：`python3 jobs/crawlers/g1.py` … `g4.py` 重新抓，`python3 jobs/build.py` 整理进 `src/jobs-data/`
+
 ## 上架前要准备的
 
 1. **开发者账号**：用 Google 账号在 <https://chrome.google.com/webstore/devconsole> 注册，一次性付 5 美元，账号要开两步验证。
