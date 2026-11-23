@@ -31,7 +31,11 @@ git switch store && git merge main
 
 - 填写商店后台要用的全部文字（说明、权限理由、数据使用勾选项）：`store/listing.md`
 - 5 张截图（1280×800）和小宣传图（440×280）：`store/*.png`，用虚构数据生成，重新生成：`sh store/make.sh`
-- 岗位数据：`python3 jobs/crawlers/g1.py` … `g4.py` 重新抓，`python3 jobs/build.py` 整理进 `src/jobs-data/`
+- 岗位数据不打包进扩展，见 `scripts/jobs/README.md`。上线前要做：
+  1. 把仓库设为公开（`raw.githubusercontent.com` 只能读公开仓库）
+  2. 推送 `store` 分支；GitHub 的定时任务只认默认分支上的 workflow，所以要么把默认分支改成 `store`，要么把 `.github/workflows/jobs-data.yml` 也放到默认分支
+  3. 在仓库的 Actions 页面手动运行一次「岗位数据」，确认 `jobs-data` 分支生成、`https://raw.githubusercontent.com/HideInSky/resume-autofill/jobs-data/index.json` 能打开
+  4. 以后加国内镜像：在 `src/jobs-config.js` 加地址，同时把同一个地址加进 `manifest.json` CSP 的 `connect-src`
 
 ## 上架前要准备的
 

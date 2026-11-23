@@ -26,7 +26,8 @@ MAX_TEXT = 2000
 DELAY = 1.1
 UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/130.0 Safari/537.36')
-OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'companies')
+# 输出目录：scripts/jobs/run.py 用环境变量 JOBS_RAW_DIR 指定；单独运行时写到 build/raw
+OUT_DIR = os.environ.get('JOBS_RAW_DIR') or os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'build', 'raw')
 TODAY = datetime.date.today().isoformat()
 
 

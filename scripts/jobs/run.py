@@ -56,7 +56,7 @@ def main():
         f"## 岗位数据 {time.strftime('%Y-%m-%d')}",
         f"- 岗位总数：{rep['total']}（上一份 {rep['prevTotal']}）",
         f"- 这次成功：{len(rep['ok'])} 家",
-        f"- 失败：{len(rep['failed'])} 家" + (f"（沿用上一份：{', '.join(rep['kept'])}）" if rep['kept'] else '') + (f"：{', '.join(rep['failed'])}" if rep['failed'] else ''),
+        f"- 失败：{len(rep['failed'])} 家" + (f"：{', '.join(rep['failed'])}" if rep['failed'] else '') + (f"（其中 {len(rep['kept'])} 家沿用上一份，其余这次没有数据）" if rep['failed'] else ''),
         f"- 不抓：" + '、'.join(f"{x['name']}（{x['why']}）" for x in rep['excluded']),
     ]
     problems = []

@@ -4,7 +4,7 @@
 set -e
 cd "$(dirname "$0")/.."
 python3 store/preview.py
-python3 jobs/build.py >/dev/null 2>&1 || true
+# 岗位截图用本机 build/site 的数据（先跑 scripts/jobs/build.py 或 run.py）
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 PROFILE=$(mktemp -d)
 shot() { "$CHROME" --headless=new --disable-gpu --hide-scrollbars --user-data-dir="$PROFILE" --force-device-scale-factor=1 --blink-settings=preferredColorScheme=1 \

@@ -611,5 +611,126 @@
   "group": "g4",
   "source": "Moka 公开接口",
   "status": "ok"
+ },
+ "tal": {
+  "name": "好未来",
+  "group": "g5",
+  "source": "job.tal.com / job-api.100tal.com 自有接口（只有校招、实习）",
+  "status": "ok"
+ },
+ "yuanfudao": {
+  "name": "猿辅导",
+  "group": "g5",
+  "source": "Moka 公开接口（fenbi）",
+  "status": "ok"
+ },
+ "xdf": {
+  "name": "新东方",
+  "group": "g5",
+  "source": "xdf.zhiye.com（北森）",
+  "status": "ok"
+ },
+ "kingdee": {
+  "name": "金蝶",
+  "group": "g5",
+  "source": "Moka 公开接口（只有校招）",
+  "status": "ok"
+ },
+ "inovance": {
+  "name": "汇川技术",
+  "group": "g5",
+  "source": "recruit.inovance.com 自有接口（页面代码里的固定 X-Portal-Id 请求头）",
+  "status": "ok"
+ },
+ "sungrow": {
+  "name": "阳光电源",
+  "group": "g5",
+  "source": "Moka 公开接口",
+  "status": "ok"
+ },
+ "longi": {
+  "name": "隆基绿能",
+  "group": "g5",
+  "source": "longi.hotjob.cn（Hotjob）",
+  "status": "ok"
+ },
+ "zeekr": {
+  "name": "极氪",
+  "group": "g5",
+  "source": "Moka 公开接口（吉利账号下按部门筛出极氪，可能有误差）",
+  "status": "ok"
+ },
+ "seres": {
+  "name": "赛力斯",
+  "group": "g5",
+  "source": "sokon.zhiye.com（北森）",
+  "status": "ok"
+ },
+ "roborock": {
+  "name": "石头科技",
+  "group": "g5",
+  "source": "roborock.zhiye.com（北森）",
+  "status": "ok"
+ },
+ "ecovacs": {
+  "name": "科沃斯",
+  "group": "g5",
+  "source": "hr.ecovacs.cn（Moka）",
+  "status": "skipped",
+  "note": "官网只链接到一个 2023 年暂停的岗位"
+ },
+ "dreame": {
+  "name": "追觅科技",
+  "group": "g5",
+  "source": "dreame.zhiye.com（北森）",
+  "status": "ok"
+ },
+ "insta360": {
+  "name": "影石",
+  "group": "g5",
+  "source": "arashivision.jobs.feishu.cn（飞书招聘）",
+  "status": "ok"
+ },
+ "bambulab": {
+  "name": "拓竹科技",
+  "group": "g5",
+  "source": "bambulab.jobs.feishu.cn（飞书招聘）",
+  "status": "ok"
+ },
+ "jtexpress": {
+  "name": "极兔速递",
+  "group": "g5",
+  "source": "jtexpress.jobs.feishu.cn（飞书招聘）",
+  "status": "ok"
+ },
+ "fulltruck": {
+  "name": "满帮",
+  "group": "g5",
+  "source": "Moka 公开接口（manbang）",
+  "status": "ok"
+ },
+ "lalamove": {
+  "name": "货拉拉",
+  "group": "g5",
+  "source": "Moka 公开接口 + join.huolala.cn（北森）",
+  "status": "ok"
+ },
+ "mindray": {
+  "name": "迈瑞医疗",
+  "group": "g5",
+  "source": "mindray.zhiye.com（北森）",
+  "status": "ok"
+ },
+ "unitedimaging": {
+  "name": "联影医疗",
+  "group": "g5",
+  "source": "united-imaging.zhiye.com（北森）",
+  "status": "ok"
+ },
+ "wuxiapptec": {
+  "name": "药明康德",
+  "group": "g5",
+  "source": "wuxiapptec.zhiye.com（北森）",
+  "status": "ok"
  }
 }

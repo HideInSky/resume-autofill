@@ -39,6 +39,7 @@ SEED = r'''
     for (const a of ['local','session']) chrome.storage[a].onChanged = { addListener() {} };
     chrome.tabs.onActivated = { addListener() {} };
     chrome.runtime.getURL = (p) => '/' + p;
+    chrome.storage.local.set({ settings: { onlineJobs: true } });
   </script>
   <script src="schema.js"></script>
   <script src="regions.js"></script>
@@ -83,10 +84,11 @@ SEED = r'''
 def write(name, src, scripts):
     s = open(os.path.join(ROOT, 'src', src), encoding='utf-8').read()
     i = s.index('  <script src="schema.js">')
-    loader = '  <script>window.__ready.then(() => { for (const f of %s) { const sc = document.createElement("script"); sc.src = f; sc.async = false; document.body.append(sc); } });</script>\n</body>\n</html>\n' % json.dumps(scripts)
+    loader = '  <script>globalThis.__previewSources = ["/build/site/"];</script>\n  <script>window.__ready.then(() => { for (const f of %s) { const sc = document.createElement("script"); sc.src = f; sc.async = false; document.body.append(sc); } });</script>\n</body>\n</html>\n' % json.dumps(scripts)
     open(os.path.join(ROOT, 'src', name), 'w', encoding='utf-8').write(s[:i] + SEED + loader)
 
 
-write('_preview_app.html', 'app.html', [f for f in ['options.js', 'tracker.js', 'documents.js', 'jobs.js', 'app.js'] if os.path.exists(os.path.join(ROOT, 'src', f))])
+open(os.path.join(ROOT, 'src', '_preview_sources.js'), 'w').write('globalThis.JOB_SOURCES = globalThis.__previewSources;\n')
+write('_preview_app.html', 'app.html', [f for f in ['options.js', 'tracker.js', 'documents.js', 'jobs-config.js', '_preview_sources.js', 'jobs.js', 'app.js'] if os.path.exists(os.path.join(ROOT, 'src', f))])
 write('_preview_panel.html', 'panel.html', ['run.js', 'panel.js'])
 print('ok')

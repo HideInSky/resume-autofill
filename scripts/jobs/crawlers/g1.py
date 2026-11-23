@@ -21,7 +21,8 @@ import urllib.parse
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_DIR = os.path.join(ROOT, 'companies')
+# 输出目录：scripts/jobs/run.py 用环境变量 JOBS_RAW_DIR 指定；单独运行时写到 build/raw
+OUT_DIR = os.environ.get('JOBS_RAW_DIR') or os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'build', 'raw')
 MAX_JOBS = int(os.environ.get('LIMIT') or 400)
 TEXT_MAX = 2000
 DELAY = 1.1
@@ -296,8 +297,9 @@ def crawl_tencent(c, col):
             det = {}
         cities = det.get('workCityList') or (p.get('workCities') or '').split()
         col.add(job(pid, p.get('positionTitle'), base + '/post_detail.html?postid=' + pid, cities,
-                    p.get('projectName') or p.get('recruitLabelName') or '', det.get('tidName') or '', '', '',
-                    det.get('desc'), det.get('request')))
+                    p.get('projectName') or p.get('recruitLabelName') or '',
+                    '-'.join(x for x in (det.get('tidName'), det.get('techTagName')) if x), '', '',
+                    det.get('desc') or det.get('topicDetail'), det.get('request') or det.get('topicRequirement')))
     # social hires if room (careers.tencent.com, description only)
     page = 1
     while not col.full():

@@ -35,7 +35,8 @@ import zlib
 from datetime import datetime, timezone, timedelta
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_DIR = os.path.join(ROOT, "companies")
+# 输出目录：scripts/jobs/run.py 用环境变量 JOBS_RAW_DIR 指定；单独运行时写到 build/raw
+OUT_DIR = os.environ.get('JOBS_RAW_DIR') or os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'build', 'raw')
 MAX_JOBS = 400
 MAX_TEXT = 2000
 MIN_INTERVAL = 1.1  # seconds between requests to the same host
