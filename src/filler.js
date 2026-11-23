@@ -1255,7 +1255,7 @@
     const info = pageInfo();
     const check = (await send({ type: 'page-check', url: location.href })) || {};
     if (check.recorded) return;
-    if (check.job) Object.assign(info, { company: check.job.company || info.company, position: check.job.title || info.position, city: check.job.city || info.city, channel: '岗位库' });
+    if (check.job) Object.assign(info, { company: check.job.company || info.company, position: check.job.title || info.position, city: check.job.city || info.city, channel: '岗位库', jobUrl: check.job.url });
     const c = card();
     c.box.innerHTML = `<button class="x" title="关闭" aria-label="关闭">×</button>
       <div class="t"><i>✓</i>记到投递记录？</div>
