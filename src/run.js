@@ -78,15 +78,5 @@ globalThis.runFill = async function ({ tabId, frameIds, opts }) {
     };
   }
   await chrome.storage.session.set({ fills });
-  // 投递记录：这是份申请表，就记一行（同一页面不重复记）
-  const page = reports.map((r) => r.page).find(Boolean);
-  if (page && globalThis.Apps) {
-    // 表单可能在内嵌的框里：记标签页的地址，和点「投递」时对得上
-    try {
-      const t = await chrome.tabs.get(tabId);
-      if (t.url && /^https?:/.test(t.url)) page.url = t.url;
-    } catch {}
-    await Apps.record({ ...page, resume: entry.name }).catch((e) => console.warn('record', e));
-  }
   return reports;
 };

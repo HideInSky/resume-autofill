@@ -3,11 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>简历自动填 · 我的资料</title>
+  <title>简历自动填</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <div class="page">
+<body class="app">
+  <nav class="topbar" aria-label="主导航">
+    <a class="brand" href="#profile"><img src="../icons/icon.svg" alt="" width="26" height="26"><span>简历自动填</span></a>
+    <div class="topnav">
+      <a href="#profile" data-view="profile">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="6.5" r="3.2"/><path d="M3.5 17c.8-3.3 3.4-5 6.5-5s5.7 1.7 6.5 5"/></svg>我的资料</a>
+      <a href="#jobs" data-view="jobs" hidden>
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5"/><path d="M12.3 12.3L17 17"/></svg>岗位</a>
+      <a href="#tracker" data-view="tracker">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 3h9v14l-4.5-3.2L5.5 17z"/></svg>投递记录</a>
+      <a href="#documents" data-view="documents">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h6.5L15.5 6.5V17a.5.5 0 01-.5.5H5a.5.5 0 01-.5-.5V3a.5.5 0 01.5-.5z"/><path d="M11 2.5V7h4.5M7.5 11h5M7.5 14h5"/></svg>文档</a>
+    </div>
+  </nav>
+
+  <div class="page" id="view-profile" data-view-panel="profile">
     <header>
       <h1>我的资料</h1>
       <p class="muted">只保存在这台电脑的浏览器里，扩展不联网。从上到下做一遍，改动自动保存。</p>
@@ -76,17 +90,14 @@
 
       <section id="s-files" class="card">
         <h2>第 3 步　简历文件和照片</h2>
-        <p class="muted">遇到上传简历、上传照片的地方会自动传上去。单个文件不超过 5 MB。</p>
-        <div id="resumes" class="site-list"></div>
+        <p class="muted">遇到上传简历、上传照片的地方会自动传上去。简历 PDF 在顶部的<a href="#documents">「文档」</a>里上传和管理，这里选这套资料用哪一份。</p>
+        <div class="grid"><label class="field"><span>这套资料上传哪份简历</span><select id="prof-resume"></select></label></div>
         <div class="row">
-          <button id="add-resume">添加简历文件</button>
-          <input id="resume-file" type="file" accept=".pdf,.doc,.docx,.txt,.rtf" multiple hidden>
           <button id="set-photo">选择照片</button>
           <input id="photo-file" type="file" accept=".jpg,.jpeg,.png,.bmp,.gif" hidden>
           <span id="photo-name" class="muted"></span>
           <button id="del-photo" class="link danger" hidden>删除照片</button>
         </div>
-        <div class="grid"><label class="field"><span>这套资料上传哪份简历</span><select id="prof-resume"></select></label></div>
       </section>
 
       <section id="s-auto" class="card">
@@ -115,11 +126,75 @@
       </section>
     </main>
   </div>
+
+  <!-- 投递记录 -->
+  <div class="wide-page" id="view-tracker" data-view-panel="tracker" hidden>
+    <div class="t-bar">
+      <div class="seg" id="t-scope" role="tablist" aria-label="进行中 / 已归档"></div>
+      <input id="t-search" class="search" type="search" placeholder="搜索公司或职位" aria-label="搜索公司或职位">
+      <div class="t-actions">
+        <details class="menu">
+          <summary class="btn">表格文件</summary>
+          <div class="menu-pop">
+            <p id="t-file-state" class="muted"></p>
+            <button id="t-file-link">连接本地 CSV 文件</button>
+            <button id="t-file-new">新建 CSV 文件</button>
+            <button id="t-file-unlink" class="danger" hidden>断开文件</button>
+            <hr>
+            <button id="t-import">导入 CSV</button>
+            <button id="t-export">导出 CSV</button>
+            <input id="t-import-file" type="file" accept=".csv,text/csv" hidden>
+          </div>
+        </details>
+        <button id="t-add" class="primary">＋ 添加记录</button>
+      </div>
+    </div>
+    <p id="t-stats" class="muted t-stats"></p>
+    <div id="board" class="board"></div>
+  </div>
+
+  <dialog id="t-dialog" class="sheet">
+    <form method="dialog" id="t-form">
+      <header class="sheet-head"><h2 id="t-dialog-title">编辑记录</h2><button value="cancel" class="icon-x" aria-label="关闭">×</button></header>
+      <div id="t-fields" class="grid"></div>
+      <footer class="sheet-foot">
+        <button type="button" id="t-delete" class="danger">删除</button>
+        <button type="button" id="t-archive">归档</button>
+        <a id="t-open" class="btn" target="_blank" rel="noopener">打开网页</a>
+        <span class="spacer"></span>
+        <button value="save" class="primary">保存</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- 文档 -->
+  <div class="wide-page" id="view-documents" data-view-panel="documents" hidden>
+    <div class="t-bar">
+      <input id="d-search" class="search" type="search" placeholder="搜索文档" aria-label="搜索文档">
+      <div class="seg" role="tablist" aria-label="显示方式">
+        <button id="d-grid" role="tab" aria-selected="true">网格</button>
+        <button id="d-list" role="tab" aria-selected="false">列表</button>
+      </div>
+      <button id="d-upload" class="primary">上传 PDF</button>
+      <input id="d-file" type="file" accept=".pdf,.doc,.docx" multiple hidden>
+    </div>
+    <div id="d-select-bar" class="select-bar" hidden>
+      <span id="d-selected"></span>
+      <button id="d-delete" class="danger">删除所选</button>
+      <button id="d-clear" class="link">取消选择</button>
+    </div>
+    <div id="docs"></div>
+  </div>
+
   <div id="status" role="status" hidden></div>
 
   <script src="schema.js"></script>
   <script src="regions.js"></script>
   <script src="vault.js"></script>
   <script src="options.js"></script>
+  <script src="apps.js"></script>
+  <script src="tracker.js"></script>
+  <script src="documents.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

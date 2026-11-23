@@ -67,7 +67,24 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   }
 });
 
-chrome.runtime.onMessage.addListener((msg, sender) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'autofill' && sender.tab) autofill(sender).catch((e) => console.warn('autofill', e));
-  if (msg && msg.type === 'submitted' && sender.tab) Apps.submitted(sender.tab.url || msg.url).catch((e) => console.warn('submitted', e));
+  // 网申页面上的小卡片：这一页记过没有、是不是从「岗位」里点进来的
+  if (msg && msg.type === 'page-check' && sender.tab) {
+    (async () => {
+      const url = sender.tab.url || msg.url;
+      const { pendingJobs = {} } = await chrome.storage.session.get('pendingJobs');
+      let origin = '';
+      try { origin = new URL(url).origin; } catch {}
+      sendResponse({ recorded: await Apps.has(url), job: pendingJobs[origin] || null });
+    })().catch(() => sendResponse({}));
+    return true;
+  }
+  // 用户点了「保存」或者自己点了「投递 / 提交」：记一条「已投递」
+  if (msg && msg.type === 'record' && sender.tab) {
+    (async () => {
+      const { book, index } = await pickProfile(sender.tab.id);
+      await Apps.record({ ...msg.info, url: sender.tab.url || msg.info.url, resume: book.list[index].name }, '已投递');
+    })().catch((e) => console.warn('record', e));
+  }
 });

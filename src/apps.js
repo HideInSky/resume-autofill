@@ -11,9 +11,19 @@ globalThis.Apps = (() => {
     ['resume', '简历版本'],
     ['note', '备注'],
     ['url', '链接'],
+    ['archived', '归档'],
   ];
-  // 已投递 → 已沟通 → 笔试 → 一面 → 二面 → HR 面 → Offer；中途可能 已拒绝 / 已放弃
-  const STATUSES = ['待投递', '已投递', '已沟通', '笔试', '一面', '二面', 'HR 面', 'Offer', '已拒绝', '已放弃'];
+  // 收藏 → 已投递 → 已沟通 → 笔试 → 一面 → 二面 → HR 面 → Offer；中途可能 已拒绝 / 已放弃
+  const STATUSES = ['收藏', '已投递', '已沟通', '笔试', '一面', '二面', 'HR 面', 'Offer', '已拒绝', '已放弃'];
+  // 看板的五列：每列包含哪些状态，拖进这一列时改成哪个状态
+  const STAGES = [
+    { id: 'saved', name: '收藏', statuses: ['收藏'], drop: '收藏' },
+    { id: 'applied', name: '已投递', statuses: ['已投递', '待投递', ''], drop: '已投递' },
+    { id: 'interview', name: '面试中', statuses: ['已沟通', '笔试', '一面', '二面', 'HR 面'], drop: '已沟通' },
+    { id: 'offer', name: 'Offer', statuses: ['Offer'], drop: 'Offer' },
+    { id: 'closed', name: '已结束', statuses: ['已拒绝', '已放弃'], drop: '已拒绝' },
+  ];
+  const stageOf = (status) => STAGES.find((g) => g.statuses.includes(status || '')) || STAGES[1];
 
   const today = () => {
     const d = new Date();
@@ -39,32 +49,27 @@ globalThis.Apps = (() => {
     await chrome.storage.local.set({ applications: rows, applicationsAt: Date.now() });
   }
 
-  // 填完一个网申页面：没记过就加一行（状态「待投递」），记过就只补上空着的格子
-  async function record(info) {
-    const rows = await list();
+  const find = (rows, info) => {
     const key = keyOf(info.url, info.position);
-    const old = rows.find((r) => keyOf(r.url, r.position) === key) || rows.find((r) => r.url && keyOf(r.url, '') === keyOf(info.url, '') && !r.position);
+    return rows.find((r) => r.url && keyOf(r.url, r.position) === key) || rows.find((r) => r.url && info.url && keyOf(r.url, '') === keyOf(info.url, '') && (!r.position || !info.position));
+  };
+  // 记一条（默认「已投递」）。记过的就只补上空着的格子；从「收藏」变成投递时更新状态和日期
+  async function record(info, status = '已投递') {
+    const rows = await list();
+    const old = find(rows, info);
     if (old) {
-      for (const [k] of COLUMNS) if (!old[k] && info[k]) old[k] = info[k];
+      for (const [k] of COLUMNS) if (!old[k] && info[k] && k !== 'status') old[k] = info[k];
+      if (STATUSES.indexOf(status) > STATUSES.indexOf(old.status) && stageOf(old.status).id === 'saved') {
+        old.status = status;
+        old.date = today();
+      }
     } else {
-      rows.unshift({ id: id(), date: today(), status: '待投递', note: '', ...pick(info) });
+      rows.unshift({ id: id(), date: today(), note: '', ...pick(info), status, archived: '' });
     }
     await save(rows);
+    return old || rows[0];
   }
-  // 在网申页面上点了「投递 / 提交」：这一页的记录改成「已投递」
-  async function submitted(url) {
-    const rows = await list();
-    const base = keyOf(url, '');
-    let hit = false;
-    for (const r of rows) {
-      if (r.url && keyOf(r.url, '') === base && r.status === '待投递') {
-        r.status = '已投递';
-        r.date = today();
-        hit = true;
-      }
-    }
-    if (hit) await save(rows);
-  }
+  const has = async (url) => !!find(await list(), { url, position: '' });
   const pick = (o) => Object.fromEntries(COLUMNS.map(([k]) => [k, String(o[k] ?? '').trim()]));
 
   // —— CSV（Excel 能直接打开；开头加 BOM，中文才不会乱码）——
@@ -103,6 +108,7 @@ globalThis.Apps = (() => {
         const o = { id: id() };
         for (const [k, i] of idx) o[k] = i >= 0 ? (r[i] || '').trim() : '';
         if (!o.status && o.company) o.status = '已投递';
+        if (o.archived === '否') o.archived = '';
         return o;
       });
   }
@@ -110,5 +116,5 @@ globalThis.Apps = (() => {
   // 合并两份记录时认「同一条」：有链接看链接 + 职位，没有就看公司 + 职位
   const rowKey = (r) => (r.url ? keyOf(r.url, r.position) : `${r.company}|${r.position}`);
 
-  return { COLUMNS, STATUSES, list, save, record, submitted, toCSV, parseCSV, today, id, rowKey };
+  return { COLUMNS, STATUSES, STAGES, stageOf, list, save, record, has, toCSV, parseCSV, today, id, rowKey };
 })();

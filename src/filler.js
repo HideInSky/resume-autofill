@@ -1212,12 +1212,76 @@
       }
     }
     if (!opts.dry) report.state = snapshot();
-    // 确实是份申请表（填上过几项）：记下这是哪家、哪个职位，侧边栏把它写进投递记录
-    if (!opts.dry && globalThis.__raFilled >= 3) {
-      report.page = pageInfo();
+    // 填上了教育经历和工作经历：这是份网申简历。问用户要不要记到投递记录，并留意用户自己点「投递 / 提交」
+    const secs = (globalThis.__raSections ??= new Set());
+    for (const l of report.filled) secs.add(l.split(' · ')[0].replace(/ #\d+$/, ''));
+    const isApplication = (secs.has('教育经历') || secs.has('最高学历')) && secs.has('工作 / 实习经历');
+    if (!opts.dry && isApplication && window === window.top) {
       watchSubmit();
+      askToRecord();
     }
     return report;
+  }
+
+  // —— 页面右下角的小卡片（closed shadow root：不受页面样式影响，填表时也扫不到它）——
+  function card() {
+    if (globalThis.__raCard) return globalThis.__raCard;
+    const host = document.createElement('div');
+    host.style.cssText = 'position:fixed;right:20px;bottom:20px;z-index:2147483647;';
+    const root = host.attachShadow({ mode: 'closed' });
+    root.innerHTML = `<style>
+      .c{width:300px;padding:16px;background:#fff;color:#17191c;border:1px solid #e3e5e1;border-radius:14px;box-shadow:0 16px 40px -12px rgba(0,0,0,.35);font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;animation:in .3s cubic-bezier(.16,1,.3,1)}
+      @keyframes in{from{opacity:0;transform:translateY(10px)}}
+      .t{display:flex;gap:8px;align-items:center;font-weight:650;font-size:15px}
+      .t i{display:grid;place-items:center;width:22px;height:22px;border-radius:6px;background:#12a56f;color:#fff;font-style:normal;font-size:13px}
+      p{margin:6px 0 10px;color:#5d636d;font-size:13px}
+      label{display:block;margin-top:8px;color:#5d636d;font-size:12px}
+      input{box-sizing:border-box;width:100%;margin-top:3px;padding:7px 10px;border:1px solid #c9ccc6;border-radius:8px;font:inherit;color:inherit;background:#fff}
+      .b{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+      button{min-height:34px;padding:0 14px;border:1px solid #c9ccc6;border-radius:8px;background:#fff;font:inherit;font-weight:500;cursor:pointer}
+      button.p{background:#12a56f;border-color:#12a56f;color:#fff;font-weight:600}
+      .x{position:absolute;top:10px;right:10px;min-height:0;width:26px;height:26px;padding:0;border:0;color:#5d636d;font-size:18px}
+      .w{position:relative}
+    </style><div class="w"><div class="c" part="c"></div></div>`;
+    document.documentElement.append(host);
+    const box = root.querySelector('.c');
+    globalThis.__raCard = { host, box, root, close: () => { host.remove(); globalThis.__raCard = null; } };
+    return globalThis.__raCard;
+  }
+  const send = (msg) => { try { return chrome.runtime.sendMessage(msg); } catch { return Promise.resolve(null); } };
+  async function askToRecord() {
+    if (globalThis.__raAsked) return;
+    globalThis.__raAsked = true;
+    const info = pageInfo();
+    const check = (await send({ type: 'page-check', url: location.href })) || {};
+    if (check.recorded) return;
+    if (check.job) Object.assign(info, { company: check.job.company || info.company, position: check.job.title || info.position, city: check.job.city || info.city, channel: '岗位库' });
+    const c = card();
+    c.box.innerHTML = `<button class="x" title="关闭" aria-label="关闭">×</button>
+      <div class="t"><i>✓</i>记到投递记录？</div>
+      <p>这一页像是网申简历。记下来，之后在「投递记录」里跟进进度。</p>
+      <label>公司<input name="company"></label><label>职位<input name="position"></label>
+      <div class="b"><button class="n">不用</button><button class="p">保存</button></div>`;
+    c.box.querySelector('[name=company]').value = info.company || '';
+    c.box.querySelector('[name=position]').value = info.position || '';
+    c.box.querySelector('.x').onclick = c.box.querySelector('.n').onclick = () => c.close();
+    c.box.querySelector('.p').onclick = async () => {
+      info.company = c.box.querySelector('[name=company]').value.trim();
+      info.position = c.box.querySelector('[name=position]').value.trim();
+      globalThis.__raInfo = info;
+      await send({ type: 'record', info });
+      done('已保存到投递记录', '可以在侧边栏「资料」→「投递记录」里查看和改状态。');
+    };
+    globalThis.__raInfo = info;
+  }
+  function done(title, text) {
+    const c = card();
+    c.box.innerHTML = `<button class="x" title="关闭" aria-label="关闭">×</button><div class="t"><i>✓</i></div><p></p>`;
+    c.box.querySelector('.t').append(title);
+    c.box.querySelector('p').textContent = text;
+    c.box.querySelector('.x').onclick = () => c.close();
+    clearTimeout(globalThis.__raCardTimer);
+    globalThis.__raCardTimer = setTimeout(() => c.close(), 6000);
   }
 
   // —— 投递记录：这个页面是哪家公司、哪个职位、在哪个城市（猜不到就空着，用户在表里改）——
@@ -1273,7 +1337,9 @@
       if (!b) return;
       const t = norm(b.value || b.textContent);
       if (t.length > 12 || !SUBMIT.test(t)) return;
-      try { chrome.runtime.sendMessage({ type: 'submitted', url: location.href }); } catch {}
+      const info = { ...(globalThis.__raInfo || pageInfo()), url: location.href };
+      send({ type: 'record', info });
+      done('🎉 恭喜你完成了一份简历投递', `已保存到投递记录${info.company ? '：' + info.company + (info.position ? ' · ' + info.position : '') : ''}。`);
     }, true);
   }
 })();

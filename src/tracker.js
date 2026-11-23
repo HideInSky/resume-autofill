@@ -1,291 +1,365 @@
-// 投递记录页：像 Excel 一样的表格，直接在格子里改，自动保存。
-// 可以连到一个本地 CSV 文件（比如放在 resume-autofill 文件夹里），每次改动都写进去，用 Excel 打开就能看。
-const $ = (id) => document.getElementById(id);
-const el = (tag, props = {}, ...kids) => {
-  const n = Object.assign(document.createElement(tag), props);
-  n.append(...kids.filter((k) => k != null));
-  return n;
-};
-let rows = [];
-let filter = '全部';
-let query = '';
+// 投递记录：看板。五列 收藏 / 已投递 / 面试中 / Offer / 已结束，卡片可以拖到别的列。
+// 数据存在浏览器里；可以连到一个本地 CSV 文件，改动自动写进去，在 Excel 里改了切回来会读进来。
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const h = (tag, props = {}, ...kids) => {
+    const n = Object.assign(document.createElement(tag), props);
+    n.append(...kids.flat().filter((k) => k != null && k !== false));
+    return n;
+  };
+  const svg = (paths, size = 16) => {
+    const n = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    n.setAttribute('viewBox', '0 0 20 20');
+    n.setAttribute('width', size);
+    n.setAttribute('height', size);
+    n.setAttribute('aria-hidden', 'true');
+    n.innerHTML = paths;
+    return n;
+  };
+  const ICON = {
+    saved: '<path d="M5.5 3h9v14l-4.5-3.2L5.5 17z"/>',
+    applied: '<path d="M3 10l14-6-5 13-2.5-5.5z"/><path d="M9.5 11.5L17 4"/>',
+    interview: '<rect x="3" y="4" width="14" height="10" rx="2"/><path d="M7 17h6M10 14v3"/>',
+    offer: '<path d="M3 7.5h14v9.5H3zM10 7.5v9.5M3 11h14"/><path d="M10 7.5C8 7.5 6 6.5 6.8 4.6 7.8 2.6 10 5 10 7.5c0-2.5 2.2-4.9 3.2-2.9.8 1.9-1.2 2.9-3.2 2.9"/>',
+    closed: '<circle cx="10" cy="10" r="7"/><path d="M7.5 7.5l5 5M12.5 7.5l-5 5"/>',
+    pin: '<path d="M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0111 0c0 4-5.5 9-5.5 9z"/><circle cx="10" cy="8.5" r="2"/>',
+  };
+  let rows = [];
+  let scope = 'active'; // active / archived
+  let query = '';
+  let editing = null;
 
-// —— 提示条（带「撤销」）——
-let toastTimer;
-function toast(text, undo) {
-  const box = $('status');
-  box.replaceChildren(text);
-  if (undo) {
-    const b = el('button', { className: 'link', textContent: '撤销' });
-    b.addEventListener('click', () => {
-      undo();
-      box.hidden = true;
-    });
-    box.append(' ', b);
+  function toast(text, undo) {
+    const box = $('status');
+    box.replaceChildren(text);
+    if (undo) {
+      const b = h('button', { className: 'link', textContent: '撤销' });
+      b.addEventListener('click', () => {
+        undo();
+        box.hidden = true;
+      });
+      box.append(' ', b);
+    }
+    box.hidden = false;
+    clearTimeout(toast.t);
+    toast.t = setTimeout(() => (box.hidden = true), undo ? 6000 : 2500);
   }
-  box.hidden = false;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (box.hidden = true), undo ? 6000 : 2500);
-}
 
-// —— 保存：先存浏览器，再写本地文件 ——
-let saving = Promise.resolve();
-function commit() {
-  saving = saving.then(async () => {
-    await Apps.save(rows);
-    await writeFile();
-  });
-  return saving;
-}
+  let saving = Promise.resolve();
+  function commit() {
+    saving = saving.then(async () => {
+      await Apps.save(rows);
+      await writeFile();
+    });
+    return saving;
+  }
 
-// —— 表格 ——
-const WIDTH = { date: 132, company: 140, position: 240, status: 104, city: 96, channel: 96, resume: 104, note: 200, url: 56 };
-function renderHead() {
-  $('thead').replaceChildren(
-    ...Apps.COLUMNS.map(([k, h]) => el('th', { textContent: h, style: `width:${WIDTH[k]}px` })),
-    el('th', { style: 'width:44px', ariaLabel: '删除' })
-  );
-}
-const STATUS_CLASS = { 待投递: 's-wait', 已投递: 's-sent', Offer: 's-offer', 已拒绝: 's-no', 已放弃: 's-no' };
-function statusCell(r) {
-  const sel = el('select', { className: 'cell status ' + (STATUS_CLASS[r.status] || 's-going'), ariaLabel: '状态' });
-  const list = Apps.STATUSES.includes(r.status) || !r.status ? Apps.STATUSES : [r.status, ...Apps.STATUSES];
-  sel.append(...list.map((s) => el('option', { value: s, textContent: s })));
-  sel.value = r.status || '已投递';
-  sel.addEventListener('change', () => {
-    r.status = sel.value;
-    sel.className = 'cell status ' + (STATUS_CLASS[r.status] || 's-going');
-    commit();
-    renderFilters();
-  });
-  return sel;
-}
-function textCell(r, k, label) {
-  const input = el('input', { className: 'cell', value: r[k] || '', ariaLabel: label, spellcheck: false });
-  if (k === 'date') input.type = 'date';
-  input.addEventListener('change', () => {
-    r[k] = input.value.trim();
-    commit();
-  });
-  return input;
-}
-function linkCell(r) {
-  if (!r.url) return el('span', { className: 'muted', textContent: '—' });
-  const a = el('a', { href: r.url, target: '_blank', rel: 'noopener', title: r.url, className: 'open', textContent: '打开' });
-  return a;
-}
-function visibleRows() {
-  const q = query.toLowerCase();
-  return rows.filter(
-    (r) =>
-      (filter === '全部' || r.status === filter) &&
-      (!q || ['company', 'position', 'city', 'note', 'channel'].some((k) => String(r[k] || '').toLowerCase().includes(q)))
-  );
-}
-function render() {
-  rows.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  const list = visibleRows();
-  $('tbody').replaceChildren(
-    ...list.map((r) => {
-      const tr = el('tr');
-      for (const [k, h] of Apps.COLUMNS) {
-        const td = el('td');
-        td.append(k === 'status' ? statusCell(r) : k === 'url' ? linkCell(r) : textCell(r, k, h));
-        tr.append(td);
-      }
-      const del = el('button', { className: 'icon-del', title: '删除这一条', ariaLabel: '删除这一条', textContent: '×' });
-      del.addEventListener('click', () => {
-        const at = rows.indexOf(r);
-        rows.splice(at, 1);
-        commit();
-        render();
-        toast(`已删除「${r.company || '未命名'}」`, () => {
-          rows.splice(at, 0, r);
+  // —— 看板 ——
+  const md = (d) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || '');
+    return m ? `${Number(m[2])}月${Number(m[3])}日` : '';
+  };
+  const hue = (s) => [...String(s)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7);
+  function logo(company) {
+    const n = h('span', { className: 'logo', textContent: (company || '？').trim().slice(0, 1).toUpperCase() });
+    n.style.setProperty('--h', hue(company || ''));
+    n.setAttribute('aria-hidden', 'true');
+    return n;
+  }
+  function card(r) {
+    const c = h('article', { className: 'tcard', draggable: true, tabIndex: 0 });
+    c.dataset.id = r.id;
+    const stage = Apps.stageOf(r.status);
+    const sub = stage.statuses.length > 1 && r.status && r.status !== stage.drop ? h('span', { className: 'tag', textContent: r.status }) : null;
+    c.append(
+      h('div', { className: 'tcard-head' }, logo(r.company), h('span', { className: 'tcard-co', textContent: r.company || '未填公司' }), sub),
+      h('div', { className: 'tcard-title', textContent: r.position || '未填职位' }),
+      r.city ? h('div', { className: 'tcard-meta' }, svg(ICON.pin, 13), h('span', { textContent: r.city })) : null,
+      h('div', { className: 'tcard-foot', textContent: (r.status === '收藏' ? '收藏于 ' : '记录于 ') + (md(r.date) || '—') })
+    );
+    c.addEventListener('click', () => openEditor(r));
+    c.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') openEditor(r);
+    });
+    c.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', r.id);
+      e.dataTransfer.effectAllowed = 'move';
+      c.classList.add('dragging');
+    });
+    c.addEventListener('dragend', () => c.classList.remove('dragging'));
+    return c;
+  }
+  const matches = (r) => {
+    const q = query.toLowerCase();
+    return !q || ['company', 'position', 'city', 'note'].some((k) => String(r[k] || '').toLowerCase().includes(q));
+  };
+  const EMPTY = {
+    saved: '在「岗位」里收藏的会出现在这里',
+    applied: '填过、投过的网申会自动记在这里',
+    interview: '把卡片拖到这里',
+    offer: '把卡片拖到这里',
+    closed: '被拒或放弃的拖到这里',
+  };
+  function render() {
+    const inScope = rows.filter((r) => (scope === 'archived') === !!r.archived);
+    const shown = inScope.filter(matches).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    $('board').replaceChildren(
+      ...Apps.STAGES.map((g) => {
+        const items = shown.filter((r) => Apps.stageOf(r.status).id === g.id);
+        const col = h(
+          'section',
+          { className: 'col col-' + g.id },
+          h('header', { className: 'col-head' }, svg(ICON[g.id]), h('b', { textContent: g.name }), h('span', { className: 'n', textContent: String(items.length) })),
+          items.length
+            ? h('div', { className: 'col-body' }, items.map(card))
+            : h('div', { className: 'col-empty' }, h('b', { textContent: '还没有' }), h('span', { textContent: EMPTY[g.id] }))
+        );
+        col.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          col.classList.add('over');
+        });
+        col.addEventListener('dragleave', () => col.classList.remove('over'));
+        col.addEventListener('drop', (e) => {
+          e.preventDefault();
+          col.classList.remove('over');
+          const r = rows.find((x) => x.id === e.dataTransfer.getData('text/plain'));
+          if (!r || Apps.stageOf(r.status).id === g.id) return;
+          r.status = g.drop;
           commit();
           render();
         });
-      });
-      tr.append(el('td', {}, del));
-      return tr;
-    })
-  );
-  $('empty').hidden = rows.length > 0;
-  renderFilters();
-}
-function renderFilters() {
-  const count = (s) => (s === '全部' ? rows.length : rows.filter((r) => r.status === s).length);
-  const shown = ['全部', ...Apps.STATUSES.filter((s) => count(s))];
-  if (!shown.includes(filter)) filter = '全部';
-  $('filters').replaceChildren(
-    ...shown.map((s) => {
-      const b = el('button', { role: 'tab', ariaSelected: String(s === filter) }, s, el('span', { className: 'n', textContent: String(count(s)) }));
-      b.addEventListener('click', () => {
-        filter = s;
-        render();
-      });
-      return b;
-    })
-  );
-  // 回复率 = 有进展的（不是待投递 / 已投递）÷ 投出去的
-  const sent = rows.filter((r) => r.status && r.status !== '待投递');
-  const replied = sent.filter((r) => r.status !== '已投递');
-  $('stats').textContent = sent.length ? `投出 ${sent.length} 份，${replied.length} 份有回音，回复率 ${Math.round((replied.length / sent.length) * 100)}%` : '';
-}
-$('search').addEventListener('input', (e) => {
-  query = e.target.value.trim();
-  render();
-});
-$('add').addEventListener('click', () => {
-  rows.unshift({ id: Apps.id(), date: Apps.today(), company: '', position: '', status: '已投递', city: '', channel: '官网', resume: '', note: '', url: '' });
-  filter = '全部';
-  commit();
-  render();
-  $('tbody').querySelector('input:not([type="date"])').focus();
-});
-
-// —— 导入 / 导出 CSV ——
-function merge(base, extra) {
-  const keys = new Set(base.map(Apps.rowKey));
-  return [...base, ...extra.filter((r) => !keys.has(Apps.rowKey(r)))];
-}
-$('import').addEventListener('click', () => $('import-file').click());
-$('import-file').addEventListener('change', async (e) => {
-  const f = e.target.files[0];
-  e.target.value = '';
-  if (!f) return;
-  const got = Apps.parseCSV(await f.text());
-  if (!got.length) return toast('没读到记录：第一行要有「日期、公司、职位、状态」这些列名');
-  const before = rows.length;
-  rows = merge(rows, got);
-  await commit();
-  render();
-  toast(`导入了 ${rows.length - before} 条` + (rows.length - before < got.length ? `（${got.length - (rows.length - before)} 条已经有了）` : ''));
-});
-$('export').addEventListener('click', () => {
-  const url = URL.createObjectURL(new Blob([Apps.toCSV(rows)], { type: 'text/csv;charset=utf-8' }));
-  el('a', { href: url, download: '投递记录.csv' }).click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-});
-
-// —— 本地 CSV 文件（浏览器的文件访问权限；文件句柄存在 IndexedDB 里，下次打开还认得）——
-const idb = (mode, fn) =>
-  new Promise((resolve, reject) => {
-    const open = indexedDB.open('resume-autofill', 1);
-    open.onupgradeneeded = () => open.result.createObjectStore('handles');
-    open.onerror = () => reject(open.error);
-    open.onsuccess = () => {
-      const tx = open.result.transaction('handles', mode);
-      const req = fn(tx.objectStore('handles'));
-      tx.oncomplete = () => resolve(req && req.result);
-      tx.onerror = () => reject(tx.error);
-    };
-  });
-const getHandle = () => idb('readonly', (s) => s.get('applications.csv'));
-const setHandle = (h) => idb('readwrite', (s) => (h ? s.put(h, 'applications.csv') : s.delete('applications.csv')));
-let handle = null;
-let ready = false; // 有读写权限
-
-async function writeFile() {
-  if (!handle || !ready) return;
-  try {
-    const w = await handle.createWritable();
-    await w.write(Apps.toCSV(rows));
-    await w.close();
-    const f = await handle.getFile();
-    await chrome.storage.local.set({ applicationsSync: { at: f.lastModified, keys: rows.map(Apps.rowKey) } });
-    showFile();
-  } catch (e) {
-    showFile('没写进文件：如果它正在 Excel 里打开，关掉后回到这页就会补写。');
+        return col;
+      })
+    );
+    const archived = rows.filter((r) => r.archived).length;
+    $('t-scope').replaceChildren(
+      ...[
+        ['active', '进行中', rows.length - archived],
+        ['archived', '已归档', archived],
+      ].map(([id, name, n]) => {
+        const b = h('button', { role: 'tab', ariaSelected: String(scope === id) }, name, h('span', { className: 'n', textContent: String(n) }));
+        b.addEventListener('click', () => {
+          scope = id;
+          render();
+        });
+        return b;
+      })
+    );
+    // 回复率 = 有进展的 ÷ 投出去的（不算收藏）
+    const sent = rows.filter((r) => Apps.stageOf(r.status).id !== 'saved');
+    const replied = sent.filter((r) => !['已投递', '待投递', ''].includes(r.status || ''));
+    $('t-stats').textContent = sent.length ? `投出 ${sent.length} 份 · ${replied.length} 份有回音 · 回复率 ${Math.round((replied.length / sent.length) * 100)}%` : '';
   }
-}
-// 文件比上次同步新（在 Excel 里改过）：以文件为准，再加上这期间扩展新记的
-async function syncFromFile() {
-  if (!handle || !ready) return;
-  const f = await handle.getFile();
-  const { applicationsSync: sync = { at: 0, keys: [] } } = await chrome.storage.local.get('applicationsSync');
-  if (f.lastModified > sync.at && f.size) {
-    const fromFile = Apps.parseCSV(await f.text());
-    const old = new Set(sync.keys);
-    rows = merge(fromFile, rows.filter((r) => !old.has(Apps.rowKey(r))));
-    await Apps.save(rows);
+  $('t-search').addEventListener('input', (e) => {
+    query = e.target.value.trim();
     render();
+  });
+
+  // —— 编辑一条（弹出的面板）——
+  const FIELD_TYPE = { date: 'date', url: 'url' };
+  function openEditor(r) {
+    editing = r;
+    $('t-dialog-title').textContent = r.company ? `${r.company} · ${r.position || '未填职位'}` : '添加记录';
+    $('t-fields').replaceChildren(
+      ...Apps.COLUMNS.filter(([k]) => k !== 'archived').map(([k, label]) => {
+        let input;
+        if (k === 'status') {
+          input = h('select', {}, Apps.STATUSES.map((s) => h('option', { value: s, textContent: s })));
+          input.value = Apps.STATUSES.includes(r.status) ? r.status : '已投递';
+        } else if (k === 'note') {
+          input = h('textarea', { value: r[k] || '', rows: 3 });
+        } else {
+          input = h('input', { type: FIELD_TYPE[k] || 'text', value: r[k] || '' });
+        }
+        input.name = k;
+        return h('label', { className: 'field' + (k === 'note' || k === 'url' ? ' wide' : '') }, h('span', { textContent: label }), input);
+      })
+    );
+    const known = rows.includes(r);
+    $('t-archive').textContent = r.archived ? '取消归档' : '归档';
+    $('t-open').hidden = !r.url;
+    if (r.url) $('t-open').href = r.url;
+    $('t-delete').hidden = !known;
+    $('t-archive').hidden = !known;
+    $('t-dialog').showModal();
   }
-  await writeFile();
-}
-function showFile(err) {
-  $('file-link').hidden = ready;
-  $('file-new').hidden = !!handle;
-  $('file-unlink').hidden = !handle;
-  $('file-link').textContent = handle && !ready ? `重新连接「${handle.name}」` : '连接本地 CSV 文件';
-  $('file-state').className = err ? 'err' : 'muted';
-  $('file-state').textContent =
-    err ||
-    (ready
-      ? `已同步到本地文件「${handle.name}」：这里的改动会写进去，在 Excel 里改了，回到这页就会读进来。`
-      : handle
-        ? '浏览器需要你再允许一次读写这个文件。'
-        : '记录存在这个浏览器里。想在 Excel 里看，可以连到一个本地 CSV 文件，比如 resume-autofill 文件夹里的「投递记录.csv」。');
-}
-const CSV_TYPE = [{ description: 'CSV 表格', accept: { 'text/csv': ['.csv'] } }];
-async function use(h) {
-  handle = h;
-  ready = (await h.requestPermission({ mode: 'readwrite' })) === 'granted';
-  await setHandle(h);
-  // 新连上的文件：把文件里已有的记录合进来（不当作「在 Excel 里删过」）
-  await chrome.storage.local.set({ applicationsSync: { at: 0, keys: [] } });
-  await syncFromFile();
-  showFile();
-}
-$('file-link').addEventListener('click', async () => {
-  try {
-    if (handle && !ready) {
-      ready = (await handle.requestPermission({ mode: 'readwrite' })) === 'granted';
-      await syncFromFile();
-      return showFile();
+  $('t-dialog').addEventListener('close', () => {
+    const r = editing;
+    editing = null;
+    if ($('t-dialog').returnValue !== 'save' || !r) return;
+    for (const el of $('t-fields').querySelectorAll('[name]')) r[el.name] = el.value.trim();
+    if (!rows.includes(r)) rows.unshift(r);
+    commit();
+    render();
+  });
+  $('t-delete').addEventListener('click', () => {
+    const r = editing;
+    const at = rows.indexOf(r);
+    rows.splice(at, 1);
+    $('t-dialog').close();
+    commit();
+    render();
+    toast(`已删除「${r.company || '未命名'}」`, () => {
+      rows.splice(at, 0, r);
+      commit();
+      render();
+    });
+  });
+  $('t-archive').addEventListener('click', () => {
+    const r = editing;
+    r.archived = r.archived ? '' : '是';
+    $('t-dialog').close();
+    commit();
+    render();
+    toast(r.archived ? '已归档，在「已归档」里能找到' : '已移回进行中');
+  });
+  $('t-add').addEventListener('click', () =>
+    openEditor({ id: Apps.id(), date: Apps.today(), company: '', position: '', status: '已投递', city: '', channel: '官网', resume: '', note: '', url: '', archived: '' })
+  );
+
+  // —— 导入 / 导出 CSV ——
+  function merge(base, extra) {
+    const keys = new Set(base.map(Apps.rowKey));
+    return [...base, ...extra.filter((r) => !keys.has(Apps.rowKey(r)))];
+  }
+  const closeMenu = () => document.querySelectorAll('details.menu[open]').forEach((d) => (d.open = false));
+  $('t-import').addEventListener('click', () => $('t-import-file').click());
+  $('t-import-file').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    closeMenu();
+    if (!f) return;
+    const got = Apps.parseCSV(await f.text());
+    if (!got.length) return toast('没读到记录：第一行要有「日期、公司、职位、状态」这些列名');
+    const before = rows.length;
+    rows = merge(rows, got);
+    await commit();
+    render();
+    toast(`导入了 ${rows.length - before} 条` + (rows.length - before < got.length ? `，${got.length - (rows.length - before)} 条已经有了` : ''));
+  });
+  $('t-export').addEventListener('click', () => {
+    closeMenu();
+    const url = URL.createObjectURL(new Blob([Apps.toCSV(rows)], { type: 'text/csv;charset=utf-8' }));
+    h('a', { href: url, download: '投递记录.csv' }).click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+
+  // —— 本地 CSV 文件（文件句柄存在 IndexedDB 里，下次打开还认得）——
+  const idb = (mode, fn) =>
+    new Promise((resolve, reject) => {
+      const open = indexedDB.open('resume-autofill', 1);
+      open.onupgradeneeded = () => open.result.createObjectStore('handles');
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const tx = open.result.transaction('handles', mode);
+        const req = fn(tx.objectStore('handles'));
+        tx.oncomplete = () => resolve(req && req.result);
+        tx.onerror = () => reject(tx.error);
+      };
+    });
+  const getHandle = () => idb('readonly', (s) => s.get('applications.csv'));
+  const setHandle = (fh) => idb('readwrite', (s) => (fh ? s.put(fh, 'applications.csv') : s.delete('applications.csv')));
+  let handle = null;
+  let ready = false;
+
+  async function writeFile() {
+    if (!handle || !ready) return;
+    try {
+      const w = await handle.createWritable();
+      await w.write(Apps.toCSV(rows));
+      await w.close();
+      const f = await handle.getFile();
+      await chrome.storage.local.set({ applicationsSync: { at: f.lastModified, keys: rows.map(Apps.rowKey) } });
+      showFile();
+    } catch {
+      showFile('没写进文件：如果它正在 Excel 里打开，关掉后回到这页就会补写。');
     }
-    const [h] = await showOpenFilePicker({ types: CSV_TYPE, id: 'applications' });
-    await use(h);
-  } catch (e) {
-    if (e.name !== 'AbortError') showFile('没能打开这个文件：' + e.message);
   }
-});
-$('file-new').addEventListener('click', async () => {
-  try {
-    await use(await showSaveFilePicker({ suggestedName: '投递记录.csv', types: CSV_TYPE, id: 'applications' }));
-  } catch (e) {
-    if (e.name !== 'AbortError') showFile('没能新建文件：' + e.message);
+  // 文件比上次同步新（在 Excel 里改过）：以文件为准，再加上这期间新记的
+  async function syncFromFile() {
+    if (!handle || !ready) return;
+    const f = await handle.getFile();
+    const { applicationsSync: sync = { at: 0, keys: [] } } = await chrome.storage.local.get('applicationsSync');
+    if (f.lastModified > sync.at && f.size) {
+      const old = new Set(sync.keys);
+      rows = merge(Apps.parseCSV(await f.text()), rows.filter((r) => !old.has(Apps.rowKey(r))));
+      await Apps.save(rows);
+      render();
+    }
+    await writeFile();
   }
-});
-$('file-unlink').addEventListener('click', async () => {
-  handle = null;
-  ready = false;
-  await setHandle(null);
-  showFile();
-});
+  function showFile(err) {
+    $('t-file-link').hidden = ready;
+    $('t-file-new').hidden = !!handle;
+    $('t-file-unlink').hidden = !handle;
+    $('t-file-link').textContent = handle && !ready ? `重新连接「${handle.name}」` : '连接本地 CSV 文件';
+    $('t-file-state').className = err ? 'err' : 'muted';
+    $('t-file-state').textContent =
+      err ||
+      (ready
+        ? `已同步到「${handle.name}」。这里的改动会写进去；在 Excel 里改了，回到这页会读进来。`
+        : handle
+          ? '浏览器需要你再允许一次读写这个文件。'
+          : '记录存在这个浏览器里。连到一个本地 CSV 文件（比如 resume-autofill/data 里的「投递记录.csv」），就能用 Excel 打开。');
+  }
+  const CSV_TYPE = [{ description: 'CSV 表格', accept: { 'text/csv': ['.csv'] } }];
+  async function use(fh) {
+    handle = fh;
+    ready = (await fh.requestPermission({ mode: 'readwrite' })) === 'granted';
+    await setHandle(fh);
+    await chrome.storage.local.set({ applicationsSync: { at: 0, keys: [] } }); // 新连上的文件：把里面的记录合进来
+    await syncFromFile();
+    showFile();
+  }
+  $('t-file-link').addEventListener('click', async () => {
+    try {
+      if (handle && !ready) {
+        ready = (await handle.requestPermission({ mode: 'readwrite' })) === 'granted';
+        await syncFromFile();
+        return showFile();
+      }
+      const [fh] = await showOpenFilePicker({ types: CSV_TYPE, id: 'applications' });
+      await use(fh);
+    } catch (e) {
+      if (e.name !== 'AbortError') showFile('没能打开这个文件：' + e.message);
+    }
+  });
+  $('t-file-new').addEventListener('click', async () => {
+    try {
+      await use(await showSaveFilePicker({ suggestedName: '投递记录.csv', types: CSV_TYPE, id: 'applications' }));
+    } catch (e) {
+      if (e.name !== 'AbortError') showFile('没能新建文件：' + e.message);
+    }
+  });
+  $('t-file-unlink').addEventListener('click', async () => {
+    handle = null;
+    ready = false;
+    await setHandle(null);
+    showFile();
+  });
 
-// 别处（侧边栏）新记了一条：表格跟着更新
-chrome.storage.local.onChanged.addListener(async (changes) => {
-  if (!changes.applications) return;
-  const now = changes.applications.newValue || [];
-  if (JSON.stringify(now) === JSON.stringify(rows)) return;
-  const focused = document.activeElement && document.activeElement.classList.contains('cell');
-  rows = now;
-  if (!focused) render();
-  writeFile();
-});
-// 从 Excel 切回来：看看文件有没有改过
-window.addEventListener('focus', () => syncFromFile().catch(() => {}));
+  // 别处（网申页面上的弹窗、岗位页的收藏）新记了一条：看板跟着更新
+  chrome.storage.local.onChanged.addListener((changes) => {
+    if (!changes.applications) return;
+    const now = changes.applications.newValue || [];
+    if (JSON.stringify(now) === JSON.stringify(rows)) return;
+    rows = now;
+    render();
+    writeFile();
+  });
+  window.addEventListener('focus', () => syncFromFile().catch(() => {}));
 
-(async () => {
-  renderHead();
-  rows = await Apps.list();
-  render();
-  if (!('showOpenFilePicker' in window)) {
-    $('file-bar').hidden = true;
-    return;
-  }
-  handle = (await getHandle()) || null;
-  if (handle) ready = (await handle.queryPermission({ mode: 'readwrite' })) === 'granted';
-  showFile();
-  await syncFromFile().catch(() => showFile('读不到之前连接的文件，可能被移走或删掉了。'));
+  (async () => {
+    rows = await Apps.list();
+    render();
+    if (!('showOpenFilePicker' in window)) {
+      for (const id of ['t-file-link', 't-file-new']) $(id).hidden = true;
+      $('t-file-state').textContent = '这个浏览器不支持直接读写本地文件，可以用导入 / 导出。';
+      return;
+    }
+    handle = (await getHandle()) || null;
+    if (handle) ready = (await handle.queryPermission({ mode: 'readwrite' })) === 'granted';
+    showFile();
+    await syncFromFile().catch(() => showFile('读不到之前连接的文件，可能被移走或删掉了。'));
+  })();
 })();

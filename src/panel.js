@@ -330,14 +330,16 @@ $('locked').addEventListener('submit', async (e) => {
 chrome.tabs.onActivated.addListener(refresh);
 $('setup').addEventListener('click', () => chrome.runtime.openOptionsPage());
 // 投递记录：在新标签页打开表格
-$('tracker').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('src/tracker.html') }));
+// 编辑资料和投递记录是同一个页面的两个标签
+const openApp = (view) => chrome.tabs.create({ url: chrome.runtime.getURL('src/app.html#' + view) });
+$('tracker').addEventListener('click', () => openApp('tracker'));
 async function renderCount() {
   const n = (await Apps.list()).length;
   $('app-count').textContent = String(n);
   $('app-count').hidden = !n;
 }
 renderCount();
-$('edit').addEventListener('click', () => chrome.runtime.openOptionsPage());
+$('edit').addEventListener('click', () => openApp('profile'));
 $('lock').addEventListener('click', async () => {
   await Vault.lock();
   refresh();

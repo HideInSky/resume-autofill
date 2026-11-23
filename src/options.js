@@ -315,39 +315,16 @@ async function readFile(file) {
 }
 
 function renderFiles() {
-  const list = files.resumes || [];
-  $('resumes').replaceChildren(
-    ...list.map((f, i) => {
-      const del = el('button', { className: 'link danger', textContent: '删除' });
-      del.addEventListener('click', () => {
-        list.splice(i, 1);
-        saveFiles();
-        renderFiles();
-      });
-      return el('div', { className: 'site' }, [
-        el('span', { textContent: `${f.name}（${kb(f.size)}）` }),
-        del,
-      ]);
-    })
-  );
-  if (!list.length) $('resumes').append(el('span', { className: 'muted', textContent: '还没有简历文件。' }));
   $('photo-name').textContent = files.photo ? `照片：${files.photo.name}（${kb(files.photo.size)}）` : '还没有照片';
   $('del-photo').hidden = !files.photo;
   renderProfiles();
 }
-
-$('add-resume').addEventListener('click', () => $('resume-file').click());
-$('resume-file').addEventListener('change', async (e) => {
-  try {
-    files.resumes = files.resumes || [];
-    for (const f of e.target.files) files.resumes.push(await readFile(f));
-    await saveFiles();
-  } catch (err) {
-    flash(err.message, 'err');
-  }
-  e.target.value = '';
+// 「文档」里上传或删除了简历：重新读一遍，下拉框跟着变
+document.addEventListener('ra-files-changed', async () => {
+  files = await Vault.loadFiles();
   renderFiles();
 });
+
 $('set-photo').addEventListener('click', () => $('photo-file').click());
 $('photo-file').addEventListener('change', async (e) => {
   try {
