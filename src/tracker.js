@@ -25,6 +25,8 @@
     pin: '<path d="M10 17.5s-5.5-5-5.5-9a5.5 5.5 0 0111 0c0 4-5.5 9-5.5 9z"/><circle cx="10" cy="8.5" r="2"/>',
   };
   let rows = [];
+  let resumes = []; // 「文档」里的简历文件名
+  let view = localStorage.getItem('ra-tracker-view') || 'board';
   let scope = 'active'; // active / archived
   let query = '';
   let editing = null;
@@ -103,6 +105,13 @@
   function render() {
     const inScope = rows.filter((r) => (scope === 'archived') === !!r.archived);
     const shown = inScope.filter(matches).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    for (const b of $('t-view').children) b.setAttribute('aria-selected', String(b.dataset.view === view));
+    $('board').className = view === 'list' ? 'tlist' : 'board';
+    if (view === 'list') renderList(shown);
+    else renderBoard(shown);
+    renderScope();
+  }
+  function renderBoard(shown) {
     $('board').replaceChildren(
       ...Apps.STAGES.map((g) => {
         const items = shown.filter((r) => Apps.stageOf(r.status).id === g.id);
@@ -124,6 +133,8 @@
           col.classList.remove('over');
           const r = rows.find((x) => x.id === e.dataTransfer.getData('text/plain'));
           if (!r || Apps.stageOf(r.status).id === g.id) return;
+          // 「收藏」只放从「岗位」里收藏的
+          if (g.id === 'saved' && !r.jobId) return toast('「收藏」只放从「岗位」里收藏的岗位');
           r.status = g.drop;
           commit();
           render();
@@ -131,6 +142,8 @@
         return col;
       })
     );
+  }
+  function renderScope() {
     const archived = rows.filter((r) => r.archived).length;
     $('t-scope').replaceChildren(
       ...[
@@ -150,6 +163,94 @@
     const replied = sent.filter((r) => !['已投递', '待投递', ''].includes(r.status || ''));
     $('t-stats').textContent = sent.length ? `投出 ${sent.length} 份 · ${replied.length} 份有回音 · 回复率 ${Math.round((replied.length / sent.length) * 100)}%` : '';
   }
+  // —— 列表：一行一条。公司 / 职位 / 城市，进度条，状态；下面一行是日期、渠道、简历版本、备注 ——
+  const statusesFor = (r) => Apps.STATUSES.filter((s) => s !== '收藏' || r.jobId || r.status === '收藏');
+  function select(options, value, onChange, label) {
+    const list = value && !options.includes(value) ? [value, ...options] : options;
+    const sel = h('select', { ariaLabel: label }, list.map((o) => h('option', { value: o, textContent: o || '（未选）' })));
+    sel.value = value || list[0];
+    sel.addEventListener('change', () => onChange(sel.value));
+    sel.addEventListener('click', (e) => e.stopPropagation());
+    return sel;
+  }
+  const resumeLabel = (name) => String(name || '').replace(/\.(pdf|docx?)$/i, '');
+  function resumeSelect(r) {
+    const names = resumes.slice();
+    if (r.resume && !names.includes(r.resume)) names.unshift(r.resume);
+    const sel = h('select', { ariaLabel: '简历版本' }, h('option', { value: '', textContent: '（未选）' }), names.map((n) => h('option', { value: n, textContent: resumeLabel(n) })));
+    sel.value = r.resume || '';
+    sel.addEventListener('change', () => {
+      r.resume = sel.value;
+      commit();
+    });
+    return sel;
+  }
+  function inlineInput(r, key, placeholder, label) {
+    const input = h('input', { className: 'inline', value: r[key] || '', placeholder, ariaLabel: label });
+    input.addEventListener('change', () => {
+      r[key] = input.value.trim();
+      commit();
+    });
+    return input;
+  }
+  function stepper(r) {
+    const at = Apps.stepOf(r.status);
+    const closed = Apps.stageOf(r.status).id === 'closed';
+    return h(
+      'div',
+      { className: 'stepper' + (closed ? ' closed' : '') },
+      Apps.STEP_NAMES.map((name, i) =>
+        h('div', { className: 'step' + (i <= at ? ' done' : '') + (i === at ? ' now' : '') }, h('span', { className: 'step-name', textContent: name }), h('i', { className: 'dot' }))
+      ),
+      closed ? h('span', { className: 'step-closed', textContent: r.status }) : null
+    );
+  }
+  function renderList(shown) {
+    if (!shown.length) {
+      $('board').replaceChildren(h('div', { className: 'col-empty' }, h('b', { textContent: '还没有记录' }), h('span', { textContent: '填过、投过的网申会自动记在这里' })));
+      return;
+    }
+    $('board').replaceChildren(
+      ...shown.map((r) => {
+        const status = select(statusesFor(r), r.status || '已投递', (v) => {
+          r.status = v;
+          commit();
+          render();
+        }, '状态');
+        status.className = 'status-sel';
+        const more = h('button', { className: 'icon-x', title: '更多', ariaLabel: '更多', textContent: '⋯' });
+        more.addEventListener('click', () => openEditor(r));
+        return h(
+          'article',
+          { className: 'trow' },
+          h(
+            'div',
+            { className: 'trow-main' },
+            logo(r.company),
+            h('div', { className: 'trow-id' }, h('b', { textContent: r.company || '未填公司' }), h('span', { textContent: r.position || '未填职位' }), h('span', { className: 'trow-city' }, svg(ICON.pin, 13), inlineInput(r, 'city', '城市', '城市'))),
+            stepper(r),
+            h('div', { className: 'trow-status' }, status, more)
+          ),
+          h(
+            'div',
+            { className: 'trow-meta' },
+            h('span', { className: 'meta' }, h('small', { textContent: '日期' }), h('span', { textContent: r.date || '—' })),
+            h('label', { className: 'meta' }, h('small', { textContent: '渠道' }), select(Apps.CHANNELS, r.channel || '官网', (v) => ((r.channel = v), commit()), '渠道')),
+            h('label', { className: 'meta' }, h('small', { textContent: '简历版本' }), resumeSelect(r)),
+            h('label', { className: 'meta grow' }, h('small', { textContent: '备注' }), inlineInput(r, 'note', '写点什么，比如面试时间', '备注'))
+          )
+        );
+      })
+    );
+  }
+  $('t-view').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-view]');
+    if (!b) return;
+    view = b.dataset.view;
+    localStorage.setItem('ra-tracker-view', view);
+    render();
+  });
+
   $('t-search').addEventListener('input', (e) => {
     query = e.target.value.trim();
     render();
@@ -163,15 +264,27 @@
     $('t-fields').replaceChildren(
       ...Apps.COLUMNS.filter(([k]) => k !== 'archived').map(([k, label]) => {
         let input;
+        // 记下来的日期、公司、职位、链接不能改；新加的一条才能填
+        const locked = rows.includes(r) && ['date', 'company', 'position', 'url'].includes(k);
         if (k === 'status') {
-          input = h('select', {}, Apps.STATUSES.map((s) => h('option', { value: s, textContent: s })));
+          input = h('select', {}, statusesFor(r).map((s) => h('option', { value: s, textContent: s })));
           input.value = Apps.STATUSES.includes(r.status) ? r.status : '已投递';
+        } else if (k === 'channel') {
+          const list = r.channel && !Apps.CHANNELS.includes(r.channel) ? [r.channel, ...Apps.CHANNELS] : Apps.CHANNELS;
+          input = h('select', {}, list.map((s) => h('option', { value: s, textContent: s })));
+          input.value = r.channel || '官网';
+        } else if (k === 'resume') {
+          const list = r.resume && !resumes.includes(r.resume) ? [r.resume, ...resumes] : resumes;
+          input = h('select', {}, h('option', { value: '', textContent: '（未选）' }), list.map((n) => h('option', { value: n, textContent: resumeLabel(n) })));
+          input.value = r.resume || '';
+        } else if (locked) {
+          input = h('input', { value: r[k] || '—', readOnly: true, className: 'locked', tabIndex: -1 });
         } else if (k === 'note') {
           input = h('textarea', { value: r[k] || '', rows: 3 });
         } else {
           input = h('input', { type: FIELD_TYPE[k] || 'text', value: r[k] || '' });
         }
-        input.name = k;
+        if (!locked) input.name = k;
         return h('label', { className: 'field' + (k === 'note' || k === 'url' ? ' wide' : '') }, h('span', { textContent: label }), input);
       })
     );
@@ -349,8 +462,20 @@
   });
   window.addEventListener('focus', () => syncFromFile().catch(() => {}));
 
+  async function loadResumes() {
+    try {
+      if ((await Vault.state()) === 'locked') return;
+      resumes = (((await Vault.loadFiles()) || {}).resumes || []).slice().sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0)).map((f) => f.name);
+    } catch {}
+  }
+  document.addEventListener('ra-files-changed', async () => {
+    await loadResumes();
+    render();
+  });
+
   (async () => {
     rows = await Apps.list();
+    await loadResumes();
     render();
     if (!('showOpenFilePicker' in window)) {
       for (const id of ['t-file-link', 't-file-new']) $(id).hidden = true;

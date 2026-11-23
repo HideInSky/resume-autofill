@@ -86,7 +86,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       const { book, index } = await pickProfile(sender.tab.id);
       // 从「岗位」点进来的：记在那个岗位的网址上，收藏过的那条直接变成「已投递」
       const { jobUrl, ...info } = msg.info;
-      await Apps.record({ ...info, url: jobUrl || sender.tab.url || info.url, resume: book.list[index].name }, '已投递');
+      const { resumes = [] } = (await Vault.loadFiles()) || {};
+      const file = resumes.find((f) => f.name === book.list[index].resume) || resumes[0];
+      await Apps.record({ ...info, url: jobUrl || sender.tab.url || info.url, resume: file ? file.name : '' }, '已投递');
     })().catch((e) => console.warn('record', e));
   }
 });

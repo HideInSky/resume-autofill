@@ -253,7 +253,7 @@ function dates(item) {
   return box;
 }
 // 一段经历：左边固定的占位图标，右边 标题 / 副标题 / 时间 / 描述
-function entry(kind, sec, item, head, subs, body) {
+function entry(kind, sec, item, head, subs, body, icon) {
   const box = el('div', 'p-entry');
   const main = el('div', 'p-main');
   const shown = [...head, ...subs.flat(), 'start', 'end', ...body];
@@ -272,12 +272,20 @@ function entry(kind, sec, item, head, subs, body) {
       more(sec, item, shown),
     ].filter(Boolean)
   );
-  box.append(badge(kind), main);
+  box.append(icon || badge(kind), main);
   return box;
+}
+// 公司用名字的第一个字当图标，颜色按名字固定
+const hue = (s) => [...String(s)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7);
+function initial(name) {
+  const b = el('span', 'avatar co', (name || '？').trim().slice(0, 1).toUpperCase());
+  b.style.setProperty('--h', hue(name || ''));
+  b.setAttribute('aria-hidden', 'true');
+  return b;
 }
 const LAYOUT = {
   education: (sec, item) => entry('school', sec, item, ['school'], [['degree', 'major']], []),
-  work: (sec, item) => entry('work', sec, item, ['title'], [['company', 'city']], ['description']),
+  work: (sec, item) => entry('work', sec, item, ['company'], [['title', 'city']], ['description'], initial(item.company)),
   project: (sec, item) => entry('project', sec, item, ['name'], [['role']], ['description']),
 };
 function basicCard(sec) {
@@ -302,14 +310,14 @@ function renderCards() {
     card.append(el('h2', '', byId[id].title), ...blocks);
     cards.push(card);
   }
-  // 其余的（求职意向、语言、账号、其他）：整张收起来，点小三角展开
+  // 其余的（求职意向、语言、账号、其他）：直接全部展开
   for (const sec of RESUME_SCHEMA.sections) {
     if (['basic', 'education', 'work', 'project', 'custom'].includes(sec.id)) continue;
     const items = sec.repeat ? profile[sec.id] || [] : [profile[sec.id] || {}];
     const blocks = items.map((item) => more(sec, item, [], ' ')).filter(Boolean);
     if (!blocks.length) continue;
-    const card = el('details', 'p-card fold');
-    card.append(el('summary', '', sec.title));
+    const card = el('section', 'p-card');
+    card.append(el('h2', '', sec.title));
     blocks.forEach((b) => {
       const group = el('div', 'p-group');
       group.append(...[...b.children].slice(1));

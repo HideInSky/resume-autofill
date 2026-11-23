@@ -23,6 +23,12 @@ globalThis.Apps = (() => {
     { id: 'offer', name: 'Offer', statuses: ['Offer'], drop: 'Offer' },
     { id: 'closed', name: '已结束', statuses: ['已拒绝', '已放弃'], drop: '已拒绝' },
   ];
+  // 渠道（默认官网）
+  const CHANNELS = ['官网', '岗位库', '内推', '牛客', 'BOSS 直聘', '猎聘', '智联招聘', '前程无忧', '实习僧', 'LinkedIn', '宣讲会', '邮件', '其他'];
+  // 列表里的进度条：收藏 → 已投递 → 笔试 → 面试 → Offer
+  const STEPS = [['收藏'], ['已投递', '待投递', ''], ['已沟通', '笔试'], ['一面', '二面', 'HR 面'], ['Offer']];
+  const STEP_NAMES = ['收藏', '已投递', '笔试', '面试', 'Offer'];
+  const stepOf = (status) => STEPS.findIndex((g) => g.includes(status || ''));
   const stageOf = (status) => STAGES.find((g) => g.statuses.includes(status || '')) || STAGES[1];
 
   const today = () => {
@@ -116,5 +122,5 @@ globalThis.Apps = (() => {
   // 合并两份记录时认「同一条」：有链接看链接 + 职位，没有就看公司 + 职位
   const rowKey = (r) => (r.url ? keyOf(r.url, r.position) : `${r.company}|${r.position}`);
 
-  return { COLUMNS, STATUSES, STAGES, stageOf, list, save, record, has, toCSV, parseCSV, today, id, rowKey };
+  return { COLUMNS, STATUSES, STAGES, stageOf, CHANNELS, STEP_NAMES, stepOf, list, save, record, has, toCSV, parseCSV, today, id, rowKey };
 })();
