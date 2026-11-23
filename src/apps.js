@@ -66,14 +66,20 @@ globalThis.Apps = (() => {
     if (old) {
       for (const [k] of COLUMNS) if (!old[k] && info[k] && k !== 'status') old[k] = info[k];
       if (STATUSES.indexOf(status) > STATUSES.indexOf(old.status) && stageOf(old.status).id === 'saved') {
-        old.status = status;
+        setStatus(old, status);
         old.date = today();
       }
     } else {
-      rows.unshift({ id: id(), date: today(), note: '', ...pick(info), status, archived: '' });
+      rows.unshift({ id: id(), date: today(), note: '', ...pick(info), status, archived: '', history: [{ s: status, at: today() }] });
     }
     await save(rows);
     return old || rows[0];
+  }
+  // 改状态时记下哪天改的：图表里的回复时间、转化率靠它
+  function setStatus(row, status) {
+    if (row.status === status) return;
+    row.status = status;
+    (row.history ??= []).push({ s: status, at: today() });
   }
   const has = async (url) => !!find(await list(), { url, position: '' });
   const pick = (o) => Object.fromEntries(COLUMNS.map(([k]) => [k, String(o[k] ?? '').trim()]));
@@ -122,5 +128,5 @@ globalThis.Apps = (() => {
   // 合并两份记录时认「同一条」：有链接看链接 + 职位，没有就看公司 + 职位
   const rowKey = (r) => (r.url ? keyOf(r.url, r.position) : `${r.company}|${r.position}`);
 
-  return { COLUMNS, STATUSES, STAGES, stageOf, CHANNELS, STEP_NAMES, stepOf, list, save, record, has, toCSV, parseCSV, today, id, rowKey };
+  return { setStatus, COLUMNS, STATUSES, STAGES, stageOf, CHANNELS, STEP_NAMES, stepOf, list, save, record, has, toCSV, parseCSV, today, id, rowKey };
 })();

@@ -1,0 +1,61 @@
+# 每天抓一次各大厂招聘官网的公开岗位，发布到 jobs-data 分支（只保留最新一份，不进 main / store 的历史）。
+# 扩展从 https://raw.githubusercontent.com/<仓库>/jobs-data/index.json 下载。
+# 抓取失败太多或数据量大跌时，这次运行显示为失败（GitHub 会发邮件），jobs-data 保持上一份不动。
+name: 岗位数据
+
+on:
+  schedule:
+    - cron: '0 19 * * *' # 北京时间每天凌晨 3 点
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: jobs-data
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: store
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 取上一份发布的数据
+        run: |
+          mkdir -p build/prev
+          if git fetch --depth=1 origin jobs-data; then
+            git archive FETCH_HEAD | tar -x -C build/prev
+          fi
+
+      - name: 抓取并整理
+        run: python3 scripts/jobs/run.py --prev build/prev --out build/site
+
+      - name: 留下这次的日志
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jobs-logs
+          path: |
+            build/logs
+            build/site/report.json
+          retention-days: 14
+
+      - name: 发布到 jobs-data 分支（只保留这一份）
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd build/site
+          git init -q -b jobs-data
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -q -m "岗位数据 $(date -u +%Y-%m-%d)"
+          git push -q --force "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" jobs-data

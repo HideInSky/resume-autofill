@@ -63,13 +63,15 @@ SEED = r'''
         { name: 'resume-english.pdf', type: 'application/pdf', size: 98000, data: c, addedAt: Date.now() - 9 * day } ] });
       await chrome.storage.local.set({ applications: [
         { id: '1', date: '2026-11-22', company: '示例游戏', position: '2027届秋招 - 数据分析师', status: '已投递', city: '杭州' },
-        { id: '2', date: '2026-11-21', company: '样例视频', position: '数据科学家（校招）', status: '一面', city: '北京' },
+        { id: '2', date: '2026-11-21', company: '样例视频', position: '数据科学家（校招）', status: '一面', city: '北京', history: [{ s: '已投递', at: '2026-11-21' }, { s: '一面', at: '2026-11-23' }] },
         { id: '3', date: '2026-11-23', company: '示例云', position: '商业分析（校招）', status: '收藏', city: '深圳' },
         { id: '4', date: '2026-11-20', company: '样例手机', position: '用户研究实习生', status: '已投递', city: '北京' },
         { id: '5', date: '2026-11-19', company: '示例电商', position: '经营分析师', status: '笔试', city: '上海' },
         { id: '6', date: '2026-11-18', company: '样例出行', position: '策略分析师', status: '已拒绝', city: '上海' },
         { id: '7', date: '2026-11-23', company: '示例汽车', position: '数据产品经理', status: '收藏', city: '广州' },
-        { id: '8', date: '2026-11-17', company: '样例银行', position: '数据分析管培生', status: 'Offer', city: '深圳' } ] });
+        { id: '8', date: '2026-11-17', company: '样例银行', position: '数据分析管培生', status: 'Offer', city: '深圳', history: [{ s: '已投递', at: '2026-11-17' }, { s: '笔试', at: '2026-11-19' }, { s: '一面', at: '2026-11-21' }, { s: 'Offer', at: '2026-11-23' }] },
+        ...Array.from({ length: 26 }, (_, i) => { const d = new Date(Date.now() - (i % 19 + 1) * 86400000); const ds = d.toISOString().slice(0, 10); const st = i % 7 === 0 ? '一面' : i % 5 === 0 ? '笔试' : i % 9 === 0 ? '已拒绝' : '已投递';
+          return { id: 'x' + i, date: ds, company: ['示例科技', '样例数据', '示例游戏', '样例云', '示例金融'][i % 5], position: '数据分析师', status: st, city: ['上海', '北京', '杭州'][i % 3], history: st === '已投递' ? [{ s: '已投递', at: ds }] : [{ s: '已投递', at: ds }, { s: st, at: new Date(d.getTime() + 3 * 86400000).toISOString().slice(0, 10) }] }; }) ] });
       await chrome.storage.session.set({ fills: { 7: { profile: '数据分析', frames: { 0: {
         done: ['基本信息 · 姓名','基本信息 · 性别','基本信息 · 手机号','基本信息 · 邮箱','教育经历 #1 · 学校','教育经历 #1 · 学历 / 学位','教育经历 #1 · 专业','教育经历 #2 · 学校','工作 / 实习经历 #1 · 公司','工作 / 实习经历 #1 · 职位','工作 / 实习经历 #1 · 工作描述','文件 · 简历'],
         missing: ['证件号码', '感兴趣的业务方向'], noData: [], unknown: 0 } } } } });

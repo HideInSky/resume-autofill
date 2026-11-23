@@ -1,0 +1,615 @@
+{
+ "tencent": {
+  "name": "腾讯",
+  "group": "g1",
+  "source": "join.qq.com 自有接口（列表 + 详情）",
+  "status": "ok"
+ },
+ "alibaba": {
+  "name": "阿里巴巴",
+  "group": "g1",
+  "source": "campus-talent.alibaba.com 自有接口（正常打开页面得到的 csrf cookie）",
+  "status": "ok"
+ },
+ "antgroup": {
+  "name": "蚂蚁集团",
+  "group": "g1",
+  "source": "hrcareersweb.antgroup.com",
+  "status": "skipped",
+  "note": "需要页面生成的 ctoken 和人机验证，不抓"
+ },
+ "bytedance": {
+  "name": "字节跳动",
+  "group": "g1",
+  "source": "jobs.bytedance.com（飞书招聘，正常打开页面得到的 csrf cookie）",
+  "status": "ok"
+ },
+ "meituan": {
+  "name": "美团",
+  "group": "g1",
+  "source": "zhaopin.meituan.com 自有接口",
+  "status": "ok"
+ },
+ "jd": {
+  "name": "京东",
+  "group": "g1",
+  "source": "campus.jd.com 自有接口",
+  "status": "ok"
+ },
+ "baidu": {
+  "name": "百度",
+  "group": "g1",
+  "source": "talent.baidu.com 自有接口",
+  "status": "ok"
+ },
+ "kuaishou": {
+  "name": "快手",
+  "group": "g1",
+  "source": "campus.kuaishou.cn 自有接口",
+  "status": "pending",
+  "note": "robots.txt 写了 Disallow: /，等你决定"
+ },
+ "pdd": {
+  "name": "拼多多",
+  "group": "g1",
+  "source": "careers.pddglobalhr.com 自有接口（只抓校招；社招要签名 token，不抓）",
+  "status": "ok"
+ },
+ "netease": {
+  "name": "网易",
+  "group": "g1",
+  "source": "campus.163.com、campus.game.163.com、hr.163.com 自有接口",
+  "status": "ok"
+ },
+ "xiaohongshu": {
+  "name": "小红书",
+  "group": "g1",
+  "source": "job.xiaohongshu.com 自有接口",
+  "status": "ok"
+ },
+ "bilibili": {
+  "name": "哔哩哔哩",
+  "group": "g1",
+  "source": "jobs.bilibili.com 自有接口（页面公开的 AppKey 请求头 + csrf cookie）",
+  "status": "ok"
+ },
+ "didi": {
+  "name": "滴滴",
+  "group": "g1",
+  "source": "talent.didiglobal.com 自有接口（只有社招；校招在 Moka 加密接口上）",
+  "status": "ok"
+ },
+ "ctrip": {
+  "name": "携程",
+  "group": "g1",
+  "source": "careers.ctrip.com",
+  "status": "skipped",
+  "note": "接口会把程序访问引到 verify.ctrip.com 人机验证，不抓"
+ },
+ "weibo": {
+  "name": "微博",
+  "group": "g1",
+  "source": "career.sina.com.cn（Moka）",
+  "status": "skipped",
+  "note": "Moka 列表接口返回加密数据，不解密"
+ },
+ "zhihu": {
+  "name": "知乎",
+  "group": "g1",
+  "source": "Moka",
+  "status": "skipped",
+  "note": "Moka 列表接口返回加密数据，不解密"
+ },
+ "dewu": {
+  "name": "得物",
+  "group": "g1",
+  "source": "campus.dewu.com + poizon.jobs.feishu.cn（飞书招聘）",
+  "status": "ok"
+ },
+ "ke": {
+  "name": "贝壳",
+  "group": "g1",
+  "source": "campus.ke.com 自有接口",
+  "status": "ok"
+ },
+ "iqiyi": {
+  "name": "爱奇艺",
+  "group": "g1",
+  "source": "careers.iqiyi.com（飞书招聘）",
+  "status": "ok"
+ },
+ "tme": {
+  "name": "腾讯音乐",
+  "group": "g1",
+  "source": "join.tencentmusic.com 自有接口",
+  "status": "ok"
+ },
+ "vipshop": {
+  "name": "唯品会",
+  "group": "g1",
+  "source": "campus.vip.com（Moka）",
+  "status": "skipped",
+  "note": "Moka 列表接口返回加密数据，不解密"
+ },
+ "shein": {
+  "name": "SHEIN",
+  "group": "g1",
+  "source": "careers.shein.cn 自有接口",
+  "status": "ok"
+ },
+ "shopee": {
+  "name": "Shopee",
+  "group": "g1",
+  "source": "ats.workatsea.com（Sea 招聘系统，careers.shopee.cn 用的就是它）",
+  "status": "ok"
+ },
+ "wuba": {
+  "name": "58同城",
+  "group": "g1",
+  "source": "campus.58.com（Moka）",
+  "status": "skipped",
+  "note": "Moka 列表接口返回加密数据，不解密"
+ },
+ "kingsoft": {
+  "name": "金山办公",
+  "group": "g1",
+  "source": "join.wps.cn（Moka）",
+  "status": "skipped",
+  "note": "Moka 列表接口返回加密数据，不解密"
+ },
+ "huawei": {
+  "name": "华为",
+  "group": "g2",
+  "source": "career.huawei.com 自有接口",
+  "status": "ok"
+ },
+ "honor": {
+  "name": "荣耀",
+  "group": "g2",
+  "source": "career.honor.com（Hotjob）",
+  "status": "ok"
+ },
+ "xiaomi": {
+  "name": "小米",
+  "group": "g2",
+  "source": "xiaomi.jobs.f.mioffice.cn（飞书招聘）",
+  "status": "ok"
+ },
+ "oppo": {
+  "name": "OPPO",
+  "group": "g2",
+  "source": "careers.oppo.com 自有接口",
+  "status": "ok"
+ },
+ "vivo": {
+  "name": "vivo",
+  "group": "g2",
+  "source": "hr-campus.vivo.com（北森）+ hr.vivo.com 自有接口",
+  "status": "ok"
+ },
+ "lenovo": {
+  "name": "联想",
+  "group": "g2",
+  "source": "talent.lenovo.com.cn / jobs.lenovo.com",
+  "status": "skipped",
+  "note": "校招项目都已关闭；社招站拒绝程序连接"
+ },
+ "zte": {
+  "name": "中兴",
+  "group": "g2",
+  "source": "Moka 公开接口 api.mokahr.com/api-platform",
+  "status": "ok"
+ },
+ "dji": {
+  "name": "大疆",
+  "group": "g2",
+  "source": "Moka 公开接口（apply.careers.dji.com）",
+  "status": "ok"
+ },
+ "nio": {
+  "name": "蔚来",
+  "group": "g2",
+  "source": "nio.jobs.feishu.cn（飞书招聘）",
+  "status": "ok"
+ },
+ "xpeng": {
+  "name": "小鹏汽车",
+  "group": "g2",
+  "source": "飞书招聘",
+  "status": "ok"
+ },
+ "lixiang": {
+  "name": "理想汽车",
+  "group": "g2",
+  "source": "lixiang.com 自有接口 + 飞书招聘",
+  "status": "ok"
+ },
+ "byd": {
+  "name": "比亚迪",
+  "group": "g2",
+  "source": "job.byd.com 自有接口（岗位链接按官网页面的规则生成）",
+  "status": "ok"
+ },
+ "geely": {
+  "name": "吉利",
+  "group": "g2",
+  "source": "Moka 公开接口（campus.geely.com）",
+  "status": "ok"
+ },
+ "greatwall": {
+  "name": "长城汽车",
+  "group": "g2",
+  "source": "zhaopin.gwm.cn（Hotjob）",
+  "status": "ok"
+ },
+ "leapmotor": {
+  "name": "零跑汽车",
+  "group": "g2",
+  "source": "leapmotor.zhiye.com（北森）",
+  "status": "ok"
+ },
+ "catl": {
+  "name": "宁德时代",
+  "group": "g2",
+  "source": "Moka 公开接口（只有社招有可用链接）",
+  "status": "ok"
+ },
+ "boe": {
+  "name": "京东方",
+  "group": "g2",
+  "source": "boe.zhiye.com（北森）",
+  "status": "ok"
+ },
+ "hikvision": {
+  "name": "海康威视",
+  "group": "g2",
+  "source": "campushr.hikvision.com 自有接口",
+  "status": "ok"
+ },
+ "dahua": {
+  "name": "大华",
+  "group": "g2",
+  "source": "dahua.zhiye.com（北森）",
+  "status": "ok"
+ },
+ "midea": {
+  "name": "美的",
+  "group": "g2",
+  "source": "careers.midea.com 自有接口",
+  "status": "ok"
+ },
+ "haier": {
+  "name": "海尔",
+  "group": "g2",
+  "source": "maker.haier.net 列表接口 + 详情页",
+  "status": "ok"
+ },
+ "gree": {
+  "name": "格力",
+  "group": "g2",
+  "source": "—",
+  "status": "skipped",
+  "note": "没有公开的网页岗位列表（走微信公众号）"
+ },
+ "tcl": {
+  "name": "TCL",
+  "group": "g2",
+  "source": "Hotjob",
+  "status": "ok"
+ },
+ "anker": {
+  "name": "安克创新",
+  "group": "g2",
+  "source": "anker-in.jobs.feishu.cn（飞书招聘）",
+  "status": "ok"
+ },
+ "transsion": {
+  "name": "传音",
+  "group": "g2",
+  "source": "transsion.zhiye.com（北森）",
+  "status": "ok"
+ },
+ "iflytek": {
+  "name": "科大讯飞",
+  "group": "g3",
+  "source": "iflytek.zhiye.com（北森）",
+  "status": "ok"
+ },
+ "sensetime": {
+  "name": "商汤",
+  "group": "g3",
+  "source": "sensetime.jobs.feishu.cn（飞书招聘）",
+  "status": "ok"
+ },
+ "megvii": {
+  "name": "旷视",
+  "group": "g3",
+  "source": "Moka 公开接口",
+  "status": "ok"
+ },
+ "horizon": {
+  "name": "地平线",
+  "group": "g3",
+  "source": "wecruit.hotjob.cn（Hotjob）",
+  "status": "ok"
+ },
+ "zhuoyu": {
+  "name": "卓驭科技",
+  "group": "g3",
+  "source": "we.zyt.com（北森）",
+  "status": "ok"
+ },
+ "weride": {
+  "name": "文远知行",
+  "group": "g3",
+  "source": "Moka 公开接口 + Lever",
+  "status": "ok"
+ },
+ "pony": {
+  "name": "小马智行",
+  "group": "g3",
+  "source": "ponyai.jobs.feishu.cn（飞书招聘）",
+  "status": "ok"
+ },
+ "momenta": {
+  "name": "Momenta",
+  "group": "g3",
+  "source": "飞书招聘",
+  "status": "ok"
+ },
+ "agibot": {
+  "name": "智元机器人",
+  "group": "g3",
+  "source": "agirobot.jobs.feishu.cn（飞书招聘）",
+  "status": "ok"
+ },
+ "unitree": {
+  "name": "宇树科技",
+  "group": "g3",
+  "source": "api.unitree.com",
+  "status": "skipped",
+  "note": "接口返回防机器人验证页，不抓"
+ },
+ "cambricon": {
+  "name": "寒武纪",
+  "group": "g3",
+  "source": "Moka 公开接口",
+  "status": "ok"
+ },
+ "hygon": {
+  "name": "海光信息",
+  "group": "g3",
+  "source": "Moka 公开接口",
+  "status": "ok"
+ },
+ "unisoc": {
+  "name": "紫光展锐",
+  "group": "g3",
+  "source": "wecruit.hotjob.cn（Hotjob）",
+  "status": "ok"
+ },
+ "gigadevice": {
+  "name": "兆易创新",
+  "group": "g3",
+  "source": "Moka 公开接口",
+  "status": "ok"
+ },
+ "smic": {
+  "name": "中芯国际",
+  "group": "g3",
+  "source": "smics.zhiye.com（北森旧版页面）",
+  "status": "ok"
+ },
+ "omnivision": {
+  "name": "豪威",
+  "group": "g3",
+  "source": "ovt-omnivision.zhiye.com（北森）",
+  "status": "ok"
+ },
+ "moonshot": {
+  "name": "月之暗面",
+  "group": "g3",
+  "source": "Moka 公开接口",
+  "status": "ok"
+ },
+ "zhipu": {
+  "name": "智谱",
+  "group": "g3",
+  "source": "Moka 公开接口",
+  "status": "ok"
+ },
+ "minimax": {
+  "name": "MiniMax",
+  "group": "g3",
+  "source": "飞书招聘",
+  "status": "ok"
+ },
+ "baichuan": {
+  "name": "百川智能",
+  "group": "g3",
+  "source": "飞书招聘",
+  "status": "ok"
+ },
+ "stepfun": {
+  "name": "阶跃星辰",
+  "group": "g3",
+  "source": "Moka 公开接口",
+  "status": "ok"
+ },
+ "4paradigm": {
+  "name": "第四范式",
+  "group": "g3",
+  "source": "Moka 公开接口",
+  "status": "ok"
+ },
+ "sangfor": {
+  "name": "深信服",
+  "group": "g3",
+  "source": "hr.sangfor.com 自有接口（页面加载时取的匿名 token）",
+  "status": "ok"
+ },
+ "qianxin": {
+  "name": "奇安信",
+  "group": "g3",
+  "source": "Moka 公开接口（只有校招）",
+  "status": "ok"
+ },
+ "yonyou": {
+  "name": "用友",
+  "group": "g3",
+  "source": "career.yonyou.com（Hotjob）",
+  "status": "ok"
+ },
+ "mihoyo": {
+  "name": "米哈游",
+  "group": "g4",
+  "source": "ats.openout.mihoyo.com 自有接口",
+  "status": "ok"
+ },
+ "lilith": {
+  "name": "莉莉丝",
+  "group": "g4",
+  "source": "lilithgames.jobs.feishu.cn（飞书招聘）",
+  "status": "ok"
+ },
+ "papergames": {
+  "name": "叠纸",
+  "group": "g4",
+  "source": "papergames.jobs.feishu.cn（飞书招聘）",
+  "status": "ok"
+ },
+ "hypergryph": {
+  "name": "鹰角网络",
+  "group": "g4",
+  "source": "Moka 公开接口",
+  "status": "ok"
+ },
+ "perfectworld": {
+  "name": "完美世界",
+  "group": "g4",
+  "source": "Moka 公开接口",
+  "status": "ok"
+ },
+ "g37": {
+  "name": "三七互娱",
+  "group": "g4",
+  "source": "zhaopin.37.com 自有页面",
+  "status": "ok"
+ },
+ "xd": {
+  "name": "心动网络",
+  "group": "g4",
+  "source": "hr.xd.cn（飞书招聘）",
+  "status": "ok"
+ },
+ "seasun": {
+  "name": "西山居",
+  "group": "g4",
+  "source": "job.seasungames.cn（Moka 公开接口的官方代理）",
+  "status": "ok"
+ },
+ "youzu": {
+  "name": "游族网络",
+  "group": "g4",
+  "source": "Moka 公开接口",
+  "status": "ok"
+ },
+ "g4399": {
+  "name": "4399",
+  "group": "g4",
+  "source": "hr.4399om.com 的 officialSite 接口",
+  "status": "pending",
+  "note": "robots.txt 只允许 /campus/ 页面，接口路径不在允许范围，等你决定"
+ },
+ "cmb": {
+  "name": "招商银行",
+  "group": "g4",
+  "source": "career.cmbchina.com 自有接口",
+  "status": "ok"
+ },
+ "pingan": {
+  "name": "中国平安",
+  "group": "g4",
+  "source": "campus.pingan.com 自有接口（只有校招）",
+  "status": "ok"
+ },
+ "webank": {
+  "name": "微众银行",
+  "group": "g4",
+  "source": "hr.webank.com（Moka）",
+  "status": "skipped",
+  "note": "列表只返回加密数据，不解密"
+ },
+ "cicc": {
+  "name": "中金公司",
+  "group": "g4",
+  "source": "cicc.zhiye.com（北森）",
+  "status": "ok"
+ },
+ "citics": {
+  "name": "中信证券",
+  "group": "g4",
+  "source": "careers.citics.com 自有接口",
+  "status": "ok"
+ },
+ "htsc": {
+  "name": "华泰证券",
+  "group": "g4",
+  "source": "wecruit.hotjob.cn（Hotjob）",
+  "status": "ok"
+ },
+ "sf": {
+  "name": "顺丰",
+  "group": "g4",
+  "source": "campus.sf-express.com 自有接口（只有校招）",
+  "status": "ok"
+ },
+ "yuewen": {
+  "name": "阅文集团",
+  "group": "g4",
+  "source": "yuewen.zhiye.com（北森）",
+  "status": "ok"
+ },
+ "qunar": {
+  "name": "去哪儿",
+  "group": "g4",
+  "source": "飞书招聘（只有社招）",
+  "status": "ok"
+ },
+ "tongcheng": {
+  "name": "同程旅行",
+  "group": "g4",
+  "source": "mhr.ly.com 自有接口",
+  "status": "ok"
+ },
+ "cainiao": {
+  "name": "菜鸟",
+  "group": "g4",
+  "source": "talent.cainiao.com 自有接口（正常打开页面得到的 csrf cookie）",
+  "status": "ok"
+ },
+ "ximalaya": {
+  "name": "喜马拉雅",
+  "group": "g4",
+  "source": "jobs.ximalaya.com（北森）",
+  "status": "ok"
+ },
+ "momo": {
+  "name": "陌陌",
+  "group": "g4",
+  "source": "Moka 公开接口",
+  "status": "ok"
+ },
+ "joyy": {
+  "name": "欢聚集团",
+  "group": "g4",
+  "source": "Moka 公开接口",
+  "status": "ok"
+ },
+ "zuoyebang": {
+  "name": "作业帮",
+  "group": "g4",
+  "source": "Moka 公开接口",
+  "status": "ok"
+ }
+}

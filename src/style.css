@@ -423,3 +423,41 @@ input.locked { background: var(--sunken); color: var(--muted); }
 /* 下拉菜单打开时按钮不要动 */
 .menu[open] > summary { margin-bottom: 0; }
 body[data-view="jobs"] { overflow: hidden; }
+.j-date { display: block; font-size: 12px; }
+.j-date.warn { color: #a16207; }
+.j-notice { display: grid; gap: 8px; justify-items: start; max-width: 460px; margin: 48px auto; padding: 24px; border: 1px dashed var(--line-strong); border-radius: 12px; }
+.j-notice p { margin: 0; line-height: 1.7; }
+.j-group { margin: 6px 8px 2px; color: var(--muted); font-size: 12px; font-weight: 600; }
+
+/* 投递记录 · 图表 */
+.tchart { display: grid; gap: 14px; margin-top: 16px; }
+.chart-card { display: grid; gap: 10px; align-content: start; padding: 18px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.chart-card > header { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.chart-card h2 { font-size: 16px; }
+.chart-card h3 { margin: 0 0 4px; font-size: 14.5px; }
+.chart-card hr { width: 100%; margin: 2px 0; border: 0; border-top: 1px solid var(--line); }
+.legend { display: flex; gap: 14px; }
+.legend .key { display: inline-flex; gap: 6px; align-items: center; padding: 0; border: 0; background: none; color: var(--muted); font-size: 12.5px; }
+.legend .key::before { content: ""; width: 10px; height: 10px; border-radius: 3px; }
+.legend .blue::before { background: #3b82f6; }
+.legend .gold::before { background: #eab308; }
+svg.bars { width: 100%; height: auto; }
+svg.bars .grid { stroke: var(--line); stroke-width: 1; }
+svg.bars .axis { fill: var(--muted); font-size: 12px; }
+svg.bars rect.blue { fill: #3b82f6; }
+svg.bars rect.gold { fill: #eab308; }
+svg.bars rect.hit { fill: transparent; }
+svg.bars g:hover rect.hit { fill: color-mix(in srgb, var(--ink) 5%, transparent); }
+.insights-title { margin: 10px 2px 0; font-size: 16px; }
+.insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.stat { display: grid; gap: 2px; }
+.stat b { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat b small { color: var(--muted); font-size: 13px; font-weight: 500; }
+.grid4 .stat b { font-size: 17px; }
+.kv { display: flex; justify-content: space-between; gap: 12px; }
+.grid4 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+.funnel { display: grid; gap: 4px; }
+.funnel-row { display: flex; justify-content: space-between; }
+.meter { height: 8px; overflow: hidden; background: var(--sunken); border-radius: 999px; }
+.meter i { display: block; height: 100%; background: #3b82f6; border-radius: 999px; }
+.small { font-size: 12px; }

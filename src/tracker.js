@@ -106,8 +106,9 @@
     const inScope = rows.filter((r) => (scope === 'archived') === !!r.archived);
     const shown = inScope.filter(matches).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
     for (const b of $('t-view').children) b.setAttribute('aria-selected', String(b.dataset.view === view));
-    $('board').className = view === 'list' ? 'tlist' : 'board';
+    $('board').className = { list: 'tlist', chart: 'tchart' }[view] || 'board';
     if (view === 'list') renderList(shown);
+    else if (view === 'chart') renderChart(shown);
     else renderBoard(shown);
     renderScope();
   }
@@ -135,7 +136,7 @@
           if (!r || Apps.stageOf(r.status).id === g.id) return;
           // 「收藏」只放从「岗位」里收藏的
           if (g.id === 'saved' && !r.jobId) return toast('「收藏」只放从「岗位」里收藏的岗位');
-          r.status = g.drop;
+          Apps.setStatus(r, g.drop);
           commit();
           render();
         });
@@ -213,7 +214,7 @@
     $('board').replaceChildren(
       ...shown.map((r) => {
         const status = select(statusesFor(r), r.status || '已投递', (v) => {
-          r.status = v;
+          Apps.setStatus(r, v);
           commit();
           render();
         }, '状态');
@@ -243,6 +244,107 @@
       })
     );
   }
+  // —— 图表：每天投了多少（获得面试及以上的标黄），下面三张小卡片看回复、节奏、转化 ——
+  const SVG = 'http://www.w3.org/2000/svg';
+  const s = (tag, attrs = {}, text) => {
+    const n = document.createElementNS(SVG, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    if (text != null) n.textContent = text;
+    return n;
+  };
+  const dayMs = 86400000;
+  const parse = (d) => (/^\d{4}-\d{2}-\d{2}/.test(d || '') ? new Date(d.slice(0, 10) + 'T00:00:00') : null);
+  const ymd = (t) => {
+    const d = new Date(t);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  // 这一条最远走到了哪一步（被拒前到过面试也算）
+  const furthest = (r) => Math.max(Apps.stepOf(r.status), ...(r.history || []).map((h) => Apps.stepOf(h.s)), 1);
+  function renderChart(all) {
+    const sent = all.filter((r) => r.status !== '收藏' && parse(r.date));
+    const today = parse(Apps.today()).getTime();
+    const first = Math.min(today, ...sent.map((r) => parse(r.date).getTime()));
+    const days = Math.max(14, Math.min(90, Math.round((today - first) / dayMs) + 1));
+    const start = today - (days - 1) * dayMs;
+    const buckets = Array.from({ length: days }, (_, i) => ({ t: start + i * dayMs, blue: 0, gold: 0 }));
+    for (const r of sent) {
+      const i = Math.round((parse(r.date).getTime() - start) / dayMs);
+      if (i < 0 || i >= days) continue;
+      furthest(r) >= 3 ? buckets[i].gold++ : buckets[i].blue++;
+    }
+    const max = Math.max(4, ...buckets.map((b) => b.blue + b.gold));
+    const W = 1000, H = 260, L = 34, B = 26, T = 10;
+    const bw = (W - L) / days;
+    const y = (v) => T + (H - T - B) * (1 - v / max);
+    const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'bars', role: 'img', 'aria-label': '每天投递的数量' });
+    const step = Math.ceil(max / 4);
+    for (let v = 0; v <= max; v += step) {
+      svg.append(s('line', { x1: L, x2: W, y1: y(v), y2: y(v), class: 'grid' }), s('text', { x: L - 8, y: y(v) + 4, class: 'axis', 'text-anchor': 'end' }, String(v)));
+    }
+    const every = Math.ceil(days / 10);
+    buckets.forEach((b, i) => {
+      const x = L + i * bw + bw * 0.18;
+      const w = bw * 0.64;
+      const g = s('g');
+      const total = b.blue + b.gold;
+      const d = new Date(b.t);
+      g.append(s('title', {}, `${d.getMonth() + 1}月${d.getDate()}日：投了 ${total} 份` + (b.gold ? `，其中 ${b.gold} 份拿到了面试` : '')));
+      if (b.blue) g.append(s('rect', { x, y: y(b.blue), width: w, height: y(0) - y(b.blue), rx: 3, class: 'blue' }));
+      if (b.gold) g.append(s('rect', { x, y: y(total), width: w, height: y(b.blue) - y(total), rx: 3, class: 'gold' }));
+      g.append(s('rect', { x: L + i * bw, y: T, width: bw, height: H - T - B, class: 'hit' }));
+      svg.append(g);
+      if (i % every === 0 || i === days - 1) svg.append(s('text', { x: L + i * bw + bw / 2, y: H - 6, class: 'axis', 'text-anchor': 'middle' }, `${d.getMonth() + 1}/${d.getDate()}`));
+    });
+    const inRange = sent.filter((r) => parse(r.date).getTime() >= start).length;
+    const chart = h(
+      'section',
+      { className: 'chart-card' },
+      h('header', {}, h('div', {}, h('h2', { textContent: '每天投递' }), h('span', { className: 'muted', textContent: `最近 ${days} 天投了 ${inRange} 份` })),
+        h('div', { className: 'legend' }, h('span', { className: 'key blue' }, '只投递 / 笔试'), h('span', { className: 'key gold' }, '拿到面试及以上'))),
+      svg
+    );
+    $('board').replaceChildren(chart, h('h2', { className: 'insights-title', textContent: '概况' }), insights(sent, today));
+  }
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+  const stat = (label, value, unit) => h('div', { className: 'stat' }, h('span', { className: 'muted', textContent: label }), h('b', {}, value, unit ? h('small', { textContent: ' ' + unit }) : null));
+  function insights(sent, today) {
+    // 回复：第一次从「已投递」往前走（或被拒）的那天
+    const replies = sent
+      .map((r) => {
+        const h1 = (r.history || []).find((x) => x.s !== '已投递' && x.s !== '收藏' && x.s !== '待投递' && parse(x.at));
+        return h1 ? (parse(h1.at) - parse(r.date)) / dayMs : null;
+      })
+      .filter((v) => v != null && v >= 0);
+    const waiting = sent.filter((r) => ['已投递', '待投递', ''].includes(r.status || ''));
+    const longest = waiting.length ? Math.max(...waiting.map((r) => Math.round((today - parse(r.date)) / dayMs))) : 0;
+    const WEEK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const byDay = Array(7).fill(0);
+    sent.forEach((r) => byDay[parse(r.date).getDay()]++);
+    const top = byDay.indexOf(Math.max(...byDay));
+    const first = sent.length ? Math.min(...sent.map((r) => parse(r.date).getTime())) : today;
+    const span = Math.max(1, Math.round((today - first) / dayMs) + 1);
+    const last30 = sent.filter((r) => today - parse(r.date) < 30 * dayMs).length;
+    const year = sent.filter((r) => r.date.startsWith(String(new Date(today).getFullYear()))).length;
+    const reach = (n) => sent.filter((r) => furthest(r) >= n).length;
+    const bar = (label, a, b) =>
+      h('div', { className: 'funnel' }, h('div', { className: 'funnel-row' }, h('span', { textContent: label }), h('b', { textContent: pct(a, b) + '%' })), h('div', { className: 'meter' }, h('i', { style: `width:${pct(a, b)}%` })), h('span', { className: 'muted small', textContent: `${a} / ${b}` }));
+    return h(
+      'div',
+      { className: 'insights' },
+      h('section', { className: 'chart-card' }, h('h3', { textContent: '回复与跟进' }),
+        stat('平均多久有回音', replies.length ? (replies.reduce((x, y2) => x + y2, 0) / replies.length).toFixed(1) : '—', replies.length ? '天' : ''),
+        h('hr'), h('div', { className: 'kv' }, h('span', { textContent: '还没回音的比例' }), h('b', { textContent: pct(waiting.length, sent.length) + '%' })),
+        h('hr'), h('div', { className: 'kv' }, h('span', { textContent: '等得最久的一份' }), h('b', { textContent: `${longest} 天` }))),
+      h('section', { className: 'chart-card' }, h('h3', { textContent: '投递节奏' }),
+        stat('一共投了', String(sent.length), '份'),
+        h('hr'), h('div', { className: 'kv' }, h('span', { textContent: '投得最多的是' }), h('b', { textContent: sent.length ? `${WEEK[top]}（${byDay[top]} 份）` : '—' })),
+        h('hr'), h('div', { className: 'grid4' }, stat('平均每天', (sent.length / span).toFixed(1)), stat('平均每周', ((sent.length / span) * 7).toFixed(1)), stat('最近 30 天', String(last30)), stat('今年', String(year)))),
+      h('section', { className: 'chart-card' }, h('h3', { textContent: '转化' }),
+        bar('投递 → 笔试 / 沟通', reach(2), sent.length), bar('笔试 → 面试', reach(3), reach(2)), bar('面试 → Offer', reach(4), reach(3)),
+        h('p', { className: 'muted small', textContent: '回音和转化按你改状态的日期算；改过状态的记录越多越准。' }))
+    );
+  }
+
   $('t-view').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-view]');
     if (!b) return;
@@ -300,7 +402,11 @@
     const r = editing;
     editing = null;
     if ($('t-dialog').returnValue !== 'save' || !r) return;
-    for (const el of $('t-fields').querySelectorAll('[name]')) r[el.name] = el.value.trim();
+    for (const el of $('t-fields').querySelectorAll('[name]')) {
+      if (el.name === 'status') Apps.setStatus(r, el.value);
+      else r[el.name] = el.value.trim();
+    }
+    if (!r.history) r.history = [{ s: r.status, at: r.date || Apps.today() }];
     if (!rows.includes(r)) rows.unshift(r);
     commit();
     render();

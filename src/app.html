@@ -112,6 +112,13 @@
         <label class="check"><input id="auto-save" type="checkbox"> 填完后点页面上的「保存」（不会点提交或投递）</label>
       </section>
 
+      <section id="s-online" class="card">
+        <h2>在线更新岗位</h2>
+        <p class="muted">「岗位」里的数据来自各大厂招聘官网的公开岗位，每天更新一次。打开后，进入「岗位」时如果本机的数据超过一天，就从下面这个地址下载新的一份：只下载公开岗位数据，不上传任何东西，不带你的资料、账号或任何标识。关着时扩展完全不联网，「岗位」里只显示以前下载过的数据。</p>
+        <label class="check"><input id="online-jobs" type="checkbox"> 打开「在线更新岗位」</label>
+        <p class="muted">数据地址：raw.githubusercontent.com/HideInSky/resume-autofill（GitHub）</p>
+      </section>
+
       <section id="s-backup" class="card">
         <h2>备份与清空</h2>
         <p class="muted">换电脑前导出，到新电脑上导入。备份是明文文件，不含简历和照片。</p>
@@ -135,7 +142,7 @@
     </div>
     <div class="j-main">
       <aside class="j-list">
-        <div class="j-list-head"><span id="j-count" class="muted"></span>
+        <div class="j-list-head"><span><span id="j-count" class="muted"></span><span id="j-date" class="j-date muted"></span></span>
           <select id="j-sort" aria-label="排序"><option value="new">最新发布</option><option value="company">按公司</option></select></div>
         <div id="j-items" class="j-items"></div>
       </aside>
@@ -151,6 +158,7 @@
       <div class="seg" id="t-view" role="tablist" aria-label="显示方式">
         <button data-view="board" role="tab">看板</button>
         <button data-view="list" role="tab">列表</button>
+        <button data-view="chart" role="tab">图表</button>
       </div>
       <div class="t-actions">
         <details class="menu">
@@ -215,6 +223,7 @@
   <script src="apps.js"></script>
   <script src="tracker.js"></script>
   <script src="documents.js"></script>
+  <script src="jobs-config.js"></script>
   <script src="jobs.js"></script>
   <script src="app.js"></script>
 </body>

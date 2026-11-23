@@ -3,7 +3,7 @@
   "name": "投简历神器 · 网申自动填写",
   "short_name": "投简历神器",
   "version": "0.5.0",
-  "description": "网申表单自动填好、简历自动上传，搜索大厂官网岗位、管理投递进度。资料只存在你自己的浏览器里，扩展不联网。",
+  "description": "网申表单自动填好、简历自动上传，搜索大厂官网岗位、管理投递进度。资料只存在你自己的浏览器里，从不上传。",
   "permissions": [
     "storage",
     "unlimitedStorage",
@@ -38,7 +38,7 @@
     }
   },
   "content_security_policy": {
-    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; frame-src blob:; object-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'"
+    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; frame-src blob:; object-src 'self'; connect-src https://raw.githubusercontent.com/HideInSky/resume-autofill/jobs-data/; form-action 'none'; base-uri 'none'"
   },
   "side_panel": {
     "default_path": "src/panel.html"

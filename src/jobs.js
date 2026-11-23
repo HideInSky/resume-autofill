@@ -45,7 +45,16 @@
     n.setAttribute('aria-hidden', 'true');
     return n;
   }
-  const valuesOf = (j, f) => (f.key === 'city' ? (j[3] ? j[3].split('|') : []) : [j[f.col]]);
+  // 地点分「中国」「国外」两组：港澳台算中国
+  const CN_LATIN = /beijing|shanghai|shenzhen|guangzhou|hangzhou|chengdu|nanjing|wuhan|suzhou|xi'?an|hong ?kong|macau|taipei|china/i;
+  const ABROAD = /新加坡|美国|日本|东京|大阪|韩国|首尔|英国|伦敦|德国|法国|巴黎|荷兰|阿姆斯特丹|加拿大|多伦多|澳大利亚|悉尼|墨尔本|印度|印尼|雅加达|越南|胡志明|河内|泰国|曼谷|马来西亚|吉隆坡|菲律宾|马尼拉|巴西|圣保罗|墨西哥|迪拜|阿联酋|沙特|利雅得|以色列|俄罗斯|莫斯科|西班牙|意大利|瑞士|瑞典|芬兰|波兰|土耳其|硅谷|西雅图|纽约|洛杉矶|旧金山|圣何塞|海外|欧洲|北美|中东|非洲|拉美|东南亚|全球/;
+  const regionOf = (city) => (CN_LATIN.test(city) ? '中国' : ABROAD.test(city) || (/[a-z]/i.test(city) && !/[\u4e00-\u9fa5]/.test(city)) ? '国外' : '中国');
+  const REGION = (r) => '@' + r; // 「中国（全部）」「国外（全部）」这两个选项的值
+  const valuesOf = (j, f) => {
+    if (f.key !== 'city') return [j[f.col]];
+    const cities = j[3] ? j[3].split('|') : [];
+    return [...cities, ...new Set(cities.map((c) => REGION(regionOf(c))))];
+  };
   const ago = (d) => {
     if (!d) return '';
     const days = Math.floor((Date.now() - new Date(d + 'T00:00:00')) / 86400000);
@@ -95,12 +104,19 @@
     else list.sort((a, b) => b[1] - a[1]);
     const pop = h('div', { className: 'menu-pop j-pop' });
     const box = h('div', { className: 'j-opts' });
+    // 地点：先「中国（全部）」「国外（全部）」，再按中国、国外分两组列城市
+    if (f.key === 'city') {
+      const real = list.filter(([k]) => !k.startsWith('@'));
+      const head = (r) => [REGION(r), c.get(REGION(r)) || 0, `${r}（全部）`];
+      list = [head('中国'), head('国外'), ['#中国'], ...real.filter(([k]) => regionOf(k) === '中国'), ['#国外'], ...real.filter(([k]) => regionOf(k) === '国外')];
+    }
     const draw = (q) =>
       box.replaceChildren(
         ...list
-          .filter(([k, , label]) => !q || String(label || k).includes(q))
-          .slice(0, 80)
+          .filter(([k, , label]) => !q || (!k.startsWith('#') && !k.startsWith('@') && String(label || k).includes(q)))
+          .slice(0, 400)
           .map(([k, v, label]) => {
+            if (k.startsWith('#')) return h('div', { className: 'j-group', textContent: k.slice(1) });
             const cb = h('input', { type: 'checkbox', checked: picked[f.key].has(k) });
             cb.addEventListener('change', () => {
               cb.checked ? picked[f.key].add(k) : picked[f.key].delete(k);
@@ -185,10 +201,68 @@
     $('j-items').replaceChildren(...items);
   }
 
-  // —— 详情 ——
+  // —— 数据：只在打开「在线更新岗位」时下载，存在本机；关着时完全不联网 ——
+  // 下载回来的只当 JSON 数据用：逐项检查类型，网址只认 http(s)，显示时一律用 textContent
+  const DAY = 86400000;
+  const str = (v, max = 4000) => (typeof v === 'string' ? v.slice(0, max) : v == null ? '' : String(v).slice(0, max));
+  const safeUrl = (u) => {
+    try {
+      const x = new URL(str(u, 2000));
+      return x.protocol === 'https:' || x.protocol === 'http:' ? x.href : '';
+    } catch {
+      return '';
+    }
+  };
+  function checkIndex(raw) {
+    if (!raw || !Array.isArray(raw.jobs) || !Array.isArray(raw.companies)) throw new Error('岗位数据格式不对');
+    return {
+      fetched: str(raw.fetched, 20),
+      companies: raw.companies.filter((c) => c && c.slug).map((c) => ({ slug: str(c.slug, 40), name: str(c.name, 40), site: safeUrl(c.site) })),
+      jobs: raw.jobs.filter((r) => Array.isArray(r) && r.length >= 8).map((r) => r.slice(0, 8).map((x) => str(x, 200))),
+    };
+  }
+  function checkDetail(raw) {
+    const out = {};
+    if (raw && typeof raw === 'object') for (const [id, v] of Object.entries(raw)) if (v && typeof v === 'object') out[str(id, 80)] = { u: safeUrl(v.u), d: str(v.d), r: str(v.r) };
+    return out;
+  }
+  const online = async () => ((await chrome.storage.local.get('settings')).settings || {}).onlineJobs === true;
+  // 不带 cookie、不带来源页、不带任何资料或标识
+  async function download(path) {
+    let last;
+    for (const base of globalThis.JOB_SOURCES || []) {
+      try {
+        const res = await fetch(base + path, { credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer', redirect: 'error' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return JSON.parse(await res.text());
+      } catch (e) {
+        last = e;
+      }
+    }
+    throw last || new Error('没有配置岗位数据地址');
+  }
   async function detailOf(j) {
-    if (!details.has(j[0])) details.set(j[0], fetch(chrome.runtime.getURL(`src/jobs-data/c/${j[0]}.json`)).then((r) => r.json()));
-    return (await details.get(j[0]))[j[1]] || {};
+    if (!details.has(j[0]))
+      details.set(
+        j[0],
+        (async () => {
+          const key = 'jobsDetail:' + j[0];
+          const cached = (await chrome.storage.local.get(key))[key];
+          if (cached && cached.fetched === data.fetched) return cached.data;
+          if (!(await online())) return cached ? cached.data : null;
+          try {
+            const fresh = checkDetail(await download(`c/${encodeURIComponent(j[0])}.json`));
+            await chrome.storage.local.set({ [key]: { fetched: data.fetched, data: fresh } });
+            return fresh;
+          } catch {
+            details.delete(j[0]); // 下次点开再试
+            return cached ? cached.data : null;
+          }
+        })()
+      );
+    const all = await details.get(j[0]);
+    const site = (data.companies.find((c) => c.slug === j[0]) || {}).site || '';
+    return all && all[j[1]] ? all[j[1]] : { u: site, d: '', r: '', missing: true };
   }
   async function select(j) {
     current = j;
@@ -202,7 +276,7 @@
     const key = j[0] + ':' + j[1];
     const saveBtn = h('button', { className: 'icon-btn' + (saved.has(key) ? ' on' : ''), title: saved.has(key) ? '取消收藏' : '收藏到投递记录', ariaLabel: '收藏' }, svg(BOOKMARK, 18));
     saveBtn.addEventListener('click', () => toggleSave(j, d));
-    const applyBtn = h('button', { className: 'primary', textContent: '去官网申请' });
+    const applyBtn = h('button', { className: 'primary', textContent: '去官网申请', disabled: !d.u });
     applyBtn.addEventListener('click', () => applyTo(j, d));
     const chips = [j[4], j[5] !== '不限' ? j[5] : '', j[6]].filter(Boolean);
     $('j-detail').replaceChildren(
@@ -224,8 +298,8 @@
       h('hr'),
       d.d ? h('section', {}, h('h2', { textContent: '岗位职责' }), h('div', { className: 'j-text', textContent: d.d })) : null,
       d.r ? h('section', {}, h('h2', { textContent: '任职要求' }), h('div', { className: 'j-text', textContent: d.r })) : null,
-      !d.d && !d.r ? h('p', { className: 'muted', textContent: '这个岗位的详细介绍请到官网查看。' }) : null,
-      h('p', {}, h('a', { href: d.u, target: '_blank', rel: 'noopener', textContent: '在官网查看原文 ↗' })),
+      !d.d && !d.r ? h('p', { className: 'muted', textContent: d.missing ? '详细介绍没能下载（可能没联网或没打开在线更新），请到官网查看。' : '这个岗位的详细介绍请到官网查看。' }) : null,
+      d.u ? h('p', {}, h('a', { href: d.u, target: '_blank', rel: 'noopener noreferrer', textContent: d.missing ? '打开公司招聘官网 ↗' : '在官网查看原文 ↗' })) : null,
       ].filter(Boolean)
     );
     $('j-detail').scrollTop = 0;
@@ -274,26 +348,68 @@
     if (current) select(current);
   });
 
+  // 没有数据可显示时：说明原因，给一个下一步（不白屏）
+  function notice(title, text, action) {
+    $('j-count').textContent = '';
+    $('j-items').replaceChildren();
+    const box = h('div', { className: 'j-notice' }, h('b', { textContent: title }), h('p', { className: 'muted', textContent: text }));
+    if (action) box.append(action);
+    $('j-detail').replaceChildren(box);
+  }
+  function button(label, fn, primary) {
+    const b = h('button', { className: primary ? 'primary' : '', textContent: label });
+    b.addEventListener('click', fn);
+    return b;
+  }
+  const goSetting = () => {
+    location.hash = '#profile';
+    setTimeout(() => document.getElementById('s-online')?.scrollIntoView({ block: 'center' }), 50);
+  };
+  function show(index, note) {
+    data = index;
+    companyName = Object.fromEntries(data.companies.map((c) => [c.slug, c.name]));
+    details.clear();
+    $('j-date').textContent = `数据更新于 ${data.fetched || '—'}` + (note ? ` · ${note}` : '');
+    $('j-date').className = note ? 'j-date warn' : 'j-date muted';
+    renderFilters();
+    apply();
+  }
   let loading = null;
-  async function load() {
-    if (data) return;
-    loading ??= (async () => {
-      $('j-count').textContent = '正在载入岗位…';
-      try {
-        data = await fetch(chrome.runtime.getURL('src/jobs-data/index.json')).then((r) => r.json());
-      } catch {
-        $('j-count').textContent = '岗位数据没载入成功。';
-        return;
-      }
-      companyName = Object.fromEntries(data.companies.map((c) => [c.slug, c.name]));
+  async function load(force) {
+    if (loading) return loading;
+    loading = (async () => {
       await loadSaved();
-      renderFilters();
-      apply();
-    })();
+      const { jobsIndex: cached } = await chrome.storage.local.get('jobsIndex');
+      const on = await online();
+      if (!on) {
+        if (cached) return show(cached.data, '在线更新已关闭');
+        return notice('在线更新岗位已关闭', '岗位数据不打包在扩展里。打开「在线更新岗位」后，扩展会下载各大厂官网的公开岗位数据（只下载，不上传任何东西）。关着时扩展完全不联网。', button('去打开', goSetting, true));
+      }
+      if (cached && !force && Date.now() - cached.at < DAY) return show(cached.data);
+      $('j-count').textContent = '正在下载最新岗位…';
+      try {
+        const fresh = checkIndex(await download('index.json'));
+        await chrome.storage.local.set({ jobsIndex: { at: Date.now(), data: fresh } });
+        show(fresh);
+      } catch {
+        if (cached) return show(cached.data, '这次没更新成功，显示的是上次下载的数据');
+        notice('岗位数据没下载下来', '第一次使用需要联网下载岗位数据。请检查网络后重试。', button('重试', () => load(true), true));
+      }
+    })().finally(() => (loading = null));
     return loading;
   }
+  // 资料页里的「在线更新岗位」开关
+  const toggle = document.getElementById('online-jobs');
+  if (toggle) {
+    online().then((on) => (toggle.checked = on));
+    toggle.addEventListener('change', async () => {
+      const { settings = {} } = await chrome.storage.local.get('settings');
+      await chrome.storage.local.set({ settings: { ...settings, onlineJobs: toggle.checked } });
+      data = null;
+    });
+  }
   document.addEventListener('ra-view', (e) => {
-    if (e.detail === 'jobs') load();
+    if (e.detail === 'jobs' && !data) load();
   });
   if (location.hash.startsWith('#jobs')) load();
 })();
