@@ -419,3 +419,7 @@ input.inline:focus { border-color: var(--accent); background: var(--surface); }
 .trow-meta .grow input.inline { flex: 1; margin-left: 0; }
 input.locked { background: var(--sunken); color: var(--muted); }
 @media (max-width: 1100px) { .trow-main { grid-template-columns: 52px 1fr 160px; } .stepper { grid-column: 1 / -1; grid-row: 2; } .trow-meta { padding-left: 20px; } }
+
+/* 下拉菜单打开时按钮不要动 */
+.menu[open] > summary { margin-bottom: 0; }
+body[data-view="jobs"] { overflow: hidden; }

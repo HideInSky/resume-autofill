@@ -3,6 +3,21 @@
 import json, os, re, glob
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def district_map():
+    # 区县 → 所在城市（用扩展自带的 src/regions.js）
+    text = open(os.path.join(HERE, '..', 'src', 'regions.js'), encoding='utf-8').read()
+    data = json.loads(text[text.index('{'):text.rindex('}') + 1])
+    out = {}
+    for prov, cities in data.items():
+        for city, districts in (cities or {}).items():
+            for d in districts or []:
+                out.setdefault(d, re.sub(r'市$', '', city))
+    return out
+
+
+DISTRICTS = district_map()
 OUT = os.path.join(HERE, '..', 'src', 'jobs-data')
 
 CATEGORIES = [
@@ -67,10 +82,16 @@ def norm_category(job):
 def norm_cities(cities):
     out = []
     for c in cities or []:
-        for part in re.split(r'[,，、/|;；\s]+', str(c)):
-            part = re.sub(r'^(中国|中国大陆)[-·]?', '', part.strip())
+        for part in re.split(r'[,，、/|;；]+', str(c)):
+            part = part.strip()
+            # 「浙江省·杭州」「中国-上海」：只留城市
+            part = re.split(r'\s*[·\-–—]\s*', part)[-1] if re.search(r'[·\-–—]', part) and re.search(r'[\u4e00-\u9fa5]', part) else part
+            part = re.sub(r'^(中国大陆|中国)', '', part).strip()
             part = re.sub(r'(市|特别行政区)$', '', part)
-            if part and part not in out and len(part) <= 12:
+            if re.fullmatch(r'[\u4e00-\u9fa5]{2,}省', part) or not part:
+                continue
+            part = DISTRICTS.get(part, part)
+            if part not in out and len(part) <= 20:
                 out.append(part)
     return out
 

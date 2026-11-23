@@ -32,7 +32,6 @@
     { key: 'type', name: '类型', col: 4, order: ['校招', '实习', '社招'] },
     { key: 'level', name: '经验', col: 5, order: ['应届', '1-3年', '3-5年', '5-10年', '10年以上', '不限'] },
     { key: 'category', name: '类别', col: 6, order: ['技术', '算法', '数据', '产品', '设计', '运营', '市场', '销售', '金融', '硬件', '游戏', '职能', '其他'] },
-    { key: 'company', name: '公司', col: 0 },
   ];
   const picked = JSON.parse(localStorage.getItem('ra-job-filters') || '{}');
   for (const f of FILTERS) picked[f.key] = new Set(picked[f.key] || []);
@@ -117,7 +116,7 @@
       const s = h('input', { type: 'search', placeholder: '搜索' + f.name });
       s.addEventListener('input', () => draw(s.value.trim()));
       pop.append(s);
-      setTimeout(() => s.focus());
+      setTimeout(() => s.focus({ preventScroll: true }));
     }
     draw('');
     pop.append(box);
