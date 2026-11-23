@@ -127,6 +127,22 @@
     </main>
   </div>
 
+  <!-- 岗位（商店版）-->
+  <div class="jobs-page" id="view-jobs" data-view-panel="jobs" hidden>
+    <div class="j-bar">
+      <input id="j-search" class="search" type="search" placeholder="搜索职位或公司" aria-label="搜索职位或公司">
+      <div id="j-filters" class="j-filters"></div>
+    </div>
+    <div class="j-main">
+      <aside class="j-list">
+        <div class="j-list-head"><span id="j-count" class="muted"></span>
+          <select id="j-sort" aria-label="排序"><option value="new">最新发布</option><option value="company">按公司</option></select></div>
+        <div id="j-items" class="j-items"></div>
+      </aside>
+      <article id="j-detail" class="j-detail"></article>
+    </div>
+  </div>
+
   <!-- 投递记录 -->
   <div class="wide-page" id="view-tracker" data-view-panel="tracker" hidden>
     <div class="t-bar">
@@ -195,6 +211,7 @@
   <script src="apps.js"></script>
   <script src="tracker.js"></script>
   <script src="documents.js"></script>
+  <script src="jobs.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

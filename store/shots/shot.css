@@ -1,0 +1,13 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1280px; height: 800px; overflow: hidden; }
+body { font: 15px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; color: #10231b; background: linear-gradient(160deg, #e8f7ef 0%, #f6faf8 55%, #eef3fb 100%); }
+.head { position: absolute; top: 34px; left: 48px; right: 48px; display: flex; gap: 16px; align-items: center; }
+.head img { width: 44px; height: 44px; border-radius: 11px; }
+.head h1 { margin: 0; font-size: 30px; font-weight: 750; letter-spacing: -0.01em; }
+.head p { margin: 2px 0 0; color: #4b5a53; font-size: 16px; }
+.stage { position: absolute; top: 124px; left: 48px; right: 48px; bottom: 0; display: flex; gap: 20px; }
+.win { position: relative; overflow: hidden; background: #fff; border: 1px solid #d9e2dd; border-bottom: 0; border-radius: 14px 14px 0 0; box-shadow: 0 30px 60px -30px rgba(16, 35, 27, 0.35); }
+.bar { height: 34px; display: flex; gap: 7px; align-items: center; padding: 0 14px; background: #f3f5f4; border-bottom: 1px solid #e3e8e5; }
+.bar i { width: 11px; height: 11px; border-radius: 50%; background: #d4d9d6; }
+.bar span { margin-left: 14px; padding: 3px 14px; background: #fff; border-radius: 6px; color: #6b7a73; font-size: 12px; }
+.view { position: absolute; top: 34px; left: 0; transform-origin: 0 0; border: 0; }

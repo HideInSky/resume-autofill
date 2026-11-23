@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>示例公司 2027 届校园招聘 · 网申</title>
+<style>
+  body { margin: 0; background: #f4f6f8; color: #1f2329; font: 14px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  .top { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 32px; background: #fff; border-bottom: 1px solid #e5e8eb; font-weight: 700; font-size: 16px; }
+  .top b { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; background: #3370ff; color: #fff; }
+  main { max-width: 860px; margin: 22px auto; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  .muted { color: #646a73; }
+  section { margin-top: 16px; padding: 20px 24px; background: #fff; border-radius: 10px; }
+  h2 { margin: 0 0 14px; font-size: 16px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
+  label { display: grid; gap: 4px; color: #646a73; font-size: 13px; }
+  label.wide { grid-column: 1 / -1; }
+  input, select, textarea { padding: 8px 10px; border: 1px solid #d0d3d6; border-radius: 6px; font: inherit; color: #1f2329; background: #fff; }
+  textarea { min-height: 64px; }
+  .req::before { content: "* "; color: #f54a45; }
+</style>
+</head>
+<body>
+<div class="top"><b>示</b>示例公司 · 校园招聘</div>
+<main>
+  <h1>2027 届校招 · 数据分析师</h1>
+  <div class="muted">工作地点：杭州 · 请完整填写以下信息</div>
+  <section>
+    <h2>基本信息</h2>
+    <div class="grid">
+      <label><span class="req">姓名</span><input id="name"></label>
+      <label><span class="req">性别</span><select id="gender"><option value="">请选择</option><option>男</option><option>女</option></select></label>
+      <label><span class="req">手机号码</span><input id="phone"></label>
+      <label><span class="req">电子邮箱</span><input id="email"></label>
+      <label>出生日期<input id="birthday" type="date"></label>
+      <label>微信号<input id="wechat"></label>
+      <label><span class="req">证件号码</span><input id="idno"></label>
+      <label>政治面貌<select id="political"><option value="">请选择</option><option>中共党员</option><option>共青团员</option><option>群众</option></select></label>
+    </div>
+  </section>
+  <section>
+    <h2>教育经历</h2>
+    <div class="grid">
+      <label><span class="req">学校名称</span><input id="school"></label>
+      <label><span class="req">学历</span><select id="degree"><option value="">请选择</option><option>本科</option><option>硕士</option><option>博士</option></select></label>
+      <label><span class="req">专业</span><input id="major"></label>
+      <label>入学时间<input id="edu-start" type="month"></label>
+    </div>
+  </section>
+  <section>
+    <h2>实习经历</h2>
+    <div class="grid">
+      <label><span class="req">公司名称</span><input id="company"></label>
+      <label><span class="req">职位名称</span><input id="title"></label>
+      <label class="wide">工作描述<textarea id="desc"></textarea></label>
+    </div>
+  </section>
+  <section>
+    <h2>其他</h2>
+    <div class="grid">
+      <label><span class="req">感兴趣的业务方向</span><select id="biz"><option value="">请选择</option><option>电商</option><option>本地生活</option><option>国际化</option></select></label>
+      <label>最早可入职时间<input id="avail" type="date"></label>
+    </div>
+  </section>
+</main>
+<script src="../../src/schema.js"></script>
+<script src="../../src/filler.js"></script>
+<script type="module">
+const SAMPLE = {
+  basic: { name: '张三', gender: '女', birthday: '2001-05-06', phone: '13800000000', email: 'zhangsan@example.com', wechat: 'zhangsan_wx', political: '共青团员' },
+  intent: { position: '数据分析师', available: '1个月' },
+  education: [{ school: '示例大学', degree: '硕士', major: '统计学', start: '2023-09', end: '2025-06' }],
+  work: [{ company: '示例科技', title: '数据分析实习生', start: '2025-06', end: '2025-08', description: '搭建漏斗看板，定位流失最高的环节；为新手引导设计 A/B 实验。' }],
+};
+await __resumeAutofill(SAMPLE, {}, {});
+</script>
+</body>
+</html>
