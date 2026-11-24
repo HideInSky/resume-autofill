@@ -135,6 +135,8 @@ const phoneCol = h('div', { className: 'aui-col' }, [
   h('div', { className: 'aui-form-item' }, [h('div', { className: 'aui-form-item__content' }, [text('b_phone')])]),
 ]);
 const attach = upload('f_attach', '.pdf,.doc,.docx,.txt', '已有简历.pdf');
+// B 站式：文件名在上传框外，框里只剩「重新上传 删除简历」
+const attach2 = h('div', {}, [h('span', { textContent: '我的简历.pdf' }), upload('f_attach2', '', '重新上传删除简历')]);
 const hiddenLater = item('微信号', 'wechat', text('b_wechat'));
 hiddenLater.style.display = 'none';
 
@@ -153,6 +155,7 @@ app.append(
     item('籍贯', 'nationality', select('b_home', ['上海', '浙江', '江西', '湖南'])),
     item('自我评价', 'selfEvaluation', area('b_intro')),
     item('附件简历', 'attachmentId', attach),
+    item('简历附件', 'attachment2', attach2),
     hiddenLater),
   moduleBox('workLocationModule', '求职工作地意向',
     item('是否接受工作地变更', 'changeWorkLocation', radios('i_change')),
@@ -234,7 +237,7 @@ const EXPECT = [
   ['任职部门', val('w_dept'), '数据部'], ['担任职位', val('w_title'), '数据分析实习生'], ['工作职责', val('w_desc'), '负责报表与归因分析'],
   ['项目名称', val('p_name'), '归因分析'], ['项目开始', val('p_start'), '2024-03-01'], ['项目角色', val('p_role'), '负责人'],
   ['项目职责', val('p_desc'), '搭建归因模型'], ['熟练程度(默认精通)', picked('l_level'), '精通'], ['语言证书', picked('l_cert'), '英语六级'], ['语言成绩', val('l_score'), '580'], ['亲属任职(默认否)', picked('o_relative'), '0'],
-  ['简历解析上传', fname('f_parse'), 'resume.pdf'], ['照片上传', fname('f_photo'), 'photo.jpg'], ['已有附件不重传', fname('f_attach'), ''],
+  ['简历解析上传', fname('f_parse'), 'resume.pdf'], ['照片上传', fname('f_photo'), 'photo.jpg'], ['已有附件不重传', fname('f_attach'), ''], ['框外有文件名不重传', fname('f_attach2'), ''],
   ['上传了 2 个文件', String(uploaded.length), '2'],
   ['自动模式:清空的姓名不回填', val('b_name'), ''], ['自动模式:新出现的微信被补上', val('b_wechat'), 'zs_wx'],
   ['自动模式:只填 1 项', String(r2.filled.length), '1'],

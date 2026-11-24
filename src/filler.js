@@ -752,9 +752,13 @@
     const ext = '.' + String(name).split('.').pop().toLowerCase();
     return accept.split(',').some((a) => a.trim() === ext);
   };
-  // 上传框里已经有文件了吗：恰好出现一个文件名，或已经显示了图片（列出多个扩展名的是格式提示）
+  // 上传框里已经有文件了吗：恰好出现一个文件名，或已经显示了图片（列出多个扩展名的是格式提示），
+  // 或者框里只剩「重新上传 / 删除简历」这类按钮：文件名显示在框外（如 B 站），框一重绘 input 就是新的，
+  // 不认这个信号的话，自动模式会一遍遍把文件传回去，网站的「是否解析覆盖」弹窗也就关不掉
+  const REPLACE_RE = /重新上传|重新选择|更换(文件|简历|附件)|删除(文件|简历|附件)|re-?upload|replace file|remove file/i;
   const hasFile = (el, box) =>
-    el.files.length > 0 || (box.textContent.match(EXT_RE) || []).length === 1 || !!box.querySelector('img[src]:not([src=""])');
+    el.files.length > 0 || (box.textContent.match(EXT_RE) || []).length === 1 || !!box.querySelector('img[src]:not([src=""])') ||
+    REPLACE_RE.test(box.textContent);
 
   // 第二步：真正把文件塞进上传框（文件内容只在需要时才传进页面）
   globalThis.__resumeAutofillFiles = function (data) {
