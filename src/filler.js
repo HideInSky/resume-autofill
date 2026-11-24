@@ -375,18 +375,30 @@
     }
   }
 
+  // 是不是多选下拉：输入框自己的 class 也可能带 select（如 atsx-select-search__field），
+  // 所以要一层层往外找，直到找到写着 multiple / multi 的外框或已选标签
+  function isMultiSelect(el) {
+    for (let n = el, d = 0; n && d < 7; n = n.parentElement, d++) {
+      const c = String(n.className || '');
+      if (/multi/i.test(c) || (n.getAttribute && n.getAttribute('aria-multiselectable') === 'true')) return true;
+      if (n !== el && /select/i.test(c) && n.querySelector('[class*="tags"],[class*="multiple"],[class*="selection__choice"]')) return true;
+      if (n.matches && n.matches('form,[class*="form-item"],[class*="formItem"],[class*="formily-item"]')) break;
+    }
+    return false;
+  }
+
   // 自定义下拉框现在选的是什么（没选返回空）
   function pickedText(el) {
     // 已选的值通常显示在输入框旁边的一个小标签里，往外找几层
     let chosen = null;
     for (let n = el.parentElement, d = 0; n && d < 4 && !chosen; n = n.parentElement, d++) {
-      if (n.matches(SELECT_WRAP)) chosen = n.querySelector('[class*="selection-item"],[class*="selected-value"],[class*="single-value"],[class*="select-value"],[class*="select__placeholder"]:not(.is-transparent)');
+      if (n.matches(SELECT_WRAP)) chosen = n.querySelector('[class*="selection-item"],[class*="selection__choice"]:not([class*="search"]),[class*="selected-value"],[class*="single-value"],[class*="select-value"],[class*="select__placeholder"]:not(.is-transparent)');
     }
     if (!chosen && isComboDiv(el)) chosen = el.querySelector('[class*="selected-value"],[class*="selection-item"]');
     if (chosen) return chosen.textContent.trim();
     // 通用判断：下拉外框里没有占位提示、却有文字，说明已经选过了
     const shell = el.tagName === 'INPUT' && el.closest('[class*="select"]:not([class*="search"]):not([class*="selection"]):not([class*="input"])');
-    if (!shell || shell.querySelector('[class*="placeholder"]')) return '';
+    if (!shell || [...shell.querySelectorAll('[class*="placeholder"]')].some(visible)) return '';
     // （选项列表就画在外框里面的不算：那是选项的文字）
     const copy = shell.cloneNode(true);
     copy.querySelectorAll('[class*="dropdown"],[role="listbox"]').forEach((d) => d.remove());
@@ -522,8 +534,7 @@
       await sleep(320);
       // 多选的下拉选完不会自己收起来：把其余要选的也点上，再帮它收起
       if (fresh().length) {
-        const wrap = el.closest('[class*="select"]');
-        const multi = !!wrap && (/multi/.test(String(wrap.className)) || !!wrap.querySelector('[class*="tag"],[class*="overflow"]'));
+        const multi = isMultiSelect(el);
         const done = new Set([hit.el]);
         for (const v of multi ? more : []) {
           const next = pick(toOptions(fresh().filter((o) => !done.has(o))), v);
@@ -1132,8 +1143,7 @@
         // 期望城市是多选时，把第二、第三意向也选上
         const more = hit.entry === profile.intent && hit.field.key === 'city' ? [profile.intent.city2, profile.intent.city3].filter(Boolean) : [];
         // 多选框里已经选了一部分（比如网站只存了一个城市）：把资料里还没选上的补上，已选的不动
-        const wrap = el.closest('[class*="select"]');
-        const multi = !!wrap && (/multi/.test(String(wrap.className)) || !!wrap.querySelector('[class*="tags"],[class*="multiple"]'));
+        const multi = isMultiSelect(el);
         const lacks = multi && more.length > 0 && [value, ...more].some((v) => !termsFor(v).some((t) => norm(picked).includes(t)));
         if (!over && !lacks && ((el.value || '').trim() || picked)) { report.kept++; continue; }
         // 省市一级一级点的选择器：把这一段的 国家 / 省 / 市 连起来当路径
