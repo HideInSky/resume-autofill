@@ -38,7 +38,7 @@
     }
   },
   "content_security_policy": {
-    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; frame-src blob:; object-src 'self'; connect-src https://raw.githubusercontent.com/HideInSky/resume-autofill/jobs-data/; form-action 'none'; base-uri 'none'"
+    "extension_pages": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; frame-src blob:; object-src 'self'; connect-src 'self' https://raw.githubusercontent.com/HideInSky/resume-autofill/jobs-data/; form-action 'none'; base-uri 'none'"
   },
   "side_panel": {
     "default_path": "src/panel.html"

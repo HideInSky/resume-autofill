@@ -227,6 +227,17 @@
     return out;
   }
   const online = async () => ((await chrome.storage.local.get('settings')).settings || {}).onlineJobs === true;
+  // 自己抓过数据（scripts/jobs/run.py 生成 build/site/）再「加载已解压的扩展」时，直接读本机这份，不联网。
+  // 商店包里没有 build/，这一步会找不到文件，照常走在线下载。
+  let fromLocal = false;
+  async function readLocal(path) {
+    try {
+      const res = await fetch(chrome.runtime.getURL('build/site/' + path), { cache: 'no-store' });
+      return res.ok ? JSON.parse(await res.text()) : null;
+    } catch {
+      return null;
+    }
+  }
   // 不带 cookie、不带来源页、不带任何资料或标识
   async function download(path) {
     let last;
@@ -246,6 +257,7 @@
       details.set(
         j[0],
         (async () => {
+          if (fromLocal) return checkDetail(await readLocal(`c/${encodeURIComponent(j[0])}.json`));
           const key = 'jobsDetail:' + j[0];
           const cached = (await chrome.storage.local.get(key))[key];
           if (cached && cached.fetched === data.fetched) return cached.data;
@@ -370,7 +382,7 @@
     companyName = Object.fromEntries(data.companies.map((c) => [c.slug, c.name]));
     details.clear();
     $('j-date').textContent = `数据更新于 ${data.fetched || '—'}` + (note ? ` · ${note}` : '');
-    $('j-date').className = note ? 'j-date warn' : 'j-date muted';
+    $('j-date').className = note && !fromLocal ? 'j-date warn' : 'j-date muted';
     renderFilters();
     apply();
   }
@@ -379,6 +391,15 @@
     if (loading) return loading;
     loading = (async () => {
       await loadSaved();
+      const local = await readLocal('index.json');
+      fromLocal = !!local;
+      if (local) {
+        try {
+          return show(checkIndex(local), '本机数据');
+        } catch {
+          fromLocal = false;
+        }
+      }
       const { jobsIndex: cached } = await chrome.storage.local.get('jobsIndex');
       const on = await online();
       if (!on) {
