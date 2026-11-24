@@ -45,6 +45,8 @@
   <div class="form-item"><span class="label">学历</span>
     <select id="e7"><option value="">请选择</option><option value="1">博士研究生</option><option value="2">硕士研究生</option><option value="3">大学本科</option></select></div>
   <div class="form-item"><span class="label">专业</span><input id="e8"></div>
+  <div class="form-item"><span class="label">是否全日制</span>
+    <select id="e9"><option value="">请选择是否全日制</option><option value="1">全日制</option><option value="2">非全日制</option></select></div>
 </div>
 
 <h3>实习经历</h3>
@@ -102,7 +104,7 @@ const EXPECT = [
   ['自定义:期望行业', v('c10'), '互联网'], ['已有内容不覆盖', v('c11'), '已有内容'],
   ['学校1', v('e1'), '示例大学'], ['学校1城市', v('e1c'), '北京'], ['学历1', v('e2'), '2'], ['专业1', v('e3'), '统计学'],
   ['开始(month)', v('e4'), '2023-09'], ['结束(date)', v('e5'), '2025-06-01'],
-  ['学校2', v('e6'), '样例学院'], ['学历2', v('e7'), '3'], ['专业2', v('e8'), '数学'],
+  ['学校2', v('e6'), '样例学院'], ['学历2', v('e7'), '3'], ['专业2', v('e8'), '数学'], ['是否全日制(默认全日制)', v('e9'), '1'],
   ['公司', v('w1'), '示例科技'], ['公司规模(不填)', v('w1s'), ''], ['职位', v('w2'), '数据分析实习生'],
   ['开始(YYYY.MM)', v('w3'), '2024.06'], ['工作内容', v('w4'), '负责报表与归因分析'],
   ['First name', v('g1'), 'San'], ['Last name', v('g2'), 'Zhang'], ['Email', v('g3'), 'zhangsan@example.com'],

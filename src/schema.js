@@ -88,7 +88,7 @@
           f('rank', '成绩排名（前百分之几）', /排名|rank/, { type: 'select', options: ['', '5%', '10%', '20%', '30%', '40%', '50%'], percent: true, req: true }),
           f('gpaScale', 'GPA 满分', /满绩|满分|gpa base|gpa scale/, { placeholder: '如 4.0 / 5.0 / 100' }),
           f('gpa', 'GPA / 绩点', /gpa|绩点|平均分|平均成绩|学业成绩/),
-          f('mode', '学制', /学制|学历类型|学习形式|培养方式/, { type: 'select', options: ['', '全日制', '非全日制'], fallback: '全日制' }),
+          f('mode', '学制', /学制|学历类型|学习形式|培养方式|全日制/, { type: 'select', options: ['', '全日制', '非全日制'], fallback: '全日制' }),
           f('cadre', '是否学生干部', /是否.*学生干部|担任.*学生干部/, { type: 'select', options: YES_NO, not: /级别|名称|职务/, fallback: '否' }),
           f('keyLab', '是否国家重点实验室', /重点实验室/, { type: 'select', options: YES_NO, not: /所在|名称/, fallback: '否' }),
           f('country', '学校所在国家', null, { generic: 'country', placeholder: '如 中国 / 美国' }),
