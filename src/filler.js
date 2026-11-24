@@ -574,7 +574,7 @@
 
   // —— 只读的日期选择器（Ant Design / Element 等）：点开 → 写入 → 回车确认 ——
   function panelMode() {
-    const open = [...document.querySelectorAll('[class*="picker-dropdown"],[class*="picker-panel"],[class*="date-picker"]')].filter(visible);
+    const open = [...document.querySelectorAll('[class*="picker-dropdown"],[class*="picker-panel"],[class*="picker-container"],[class*="date-picker"]')].filter(visible);
     const has = (re) => open.some((p) => p.querySelector(re));
     // 有的组件类名写着 date，面板里其实只有 1 月到 12 月
     if (open.some((p) => /0?1月/.test(p.textContent) && /12月/.test(p.textContent) && !/31/.test(p.textContent))) return 'month';
@@ -582,6 +582,41 @@
     if (has('[class*="month-panel"],[class*="month-table"]')) return 'month';
     if (has('[class*="year-panel"],[class*="year-table"]')) return 'year';
     return null;
+  }
+  // 面板里自带输入框（Ant Design v3 的日期面板）：要写在面板的框里，点开的那个框是只读的
+  const panelInput = (el) =>
+    [...document.querySelectorAll('[class*="picker-container"] input,input[class*="calendar-input"],[class*="picker-panel"] input')].find(
+      (i) => i !== el && visible(i) && !i.readOnly && !i.disabled && i.type !== 'hidden'
+    );
+  // 月份面板没有输入框（Ant Design v3 的 MonthPicker，如 B 站）：翻到那一年，再点月份
+  const CN_MONTH = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
+  async function pickMonthCell(y, mo) {
+    const panel = () =>
+      [...document.querySelectorAll('[class*="month-panel"],[class*="month-table"],[class*="picker-panel"]')].filter(visible).find((p) => p.querySelector('td'));
+    let p = panel();
+    if (!p) return false;
+    const root = p.closest('[class*="container"],[class*="dropdown"],[class*="popper"]') || p;
+    for (let i = 0; i < 80; i++) {
+      const lab = [...root.querySelectorAll('[class*="year-select"],[class*="year-btn"],[class*="header-label"]')]
+        .filter(visible)
+        .map((e) => /(\d{4})/.exec(e.textContent))
+        .find(Boolean);
+      if (!lab) return false;
+      if (+lab[1] === +y) break;
+      const dir = +lab[1] > +y ? '[class*="prev-year"],[class*="super-prev"],[class*="d-arrow-left"]' : '[class*="next-year"],[class*="super-next"],[class*="d-arrow-right"]';
+      const btn = [...root.querySelectorAll(dir)].filter(visible).pop();
+      if (!btn) return false;
+      press(btn);
+      await sleep(60);
+    }
+    p = panel();
+    const n = +mo;
+    const names = [`${CN_MONTH[n - 1]}月`, `${n}月`, `${mo}月`, String(n), mo];
+    const cell = p && [...p.querySelectorAll('td')].find((td) => names.includes((td.getAttribute('title') || '').trim()) || names.includes(td.textContent.trim()));
+    if (!cell || /disabled/.test(cell.className)) return false;
+    press(cell.querySelector('a,div,span') || cell);
+    await sleep(200);
+    return true;
   }
   async function fillPicker(el, value) {
     const m = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(value);
@@ -597,11 +632,16 @@
         const all = { date: `${m[1]}-${m[2]}-${m[3] || '01'}`, month: `${m[1]}-${m[2]}`, year: m[1] };
         const mode = panelMode() || 'date';
         tries = [all[mode], ...Object.values(all).filter((x) => x !== all[mode])];
+        if (mode === 'month' && !panelInput(el) && (await pickMonthCell(m[1], m[2])) && (isStart || el.value.trim())) {
+          if (!isStart) { el.blur(); press(document.body); await sleep(250); }
+          return true;
+        }
       }
-      setRaw(el, tries[n]);
-      el.dispatchEvent(new Event('change', { bubbles: true }));
+      const box = panelInput(el) || el;
+      setRaw(box, tries[n]);
+      box.dispatchEvent(new Event('change', { bubbles: true }));
       await sleep(150);
-      pressKey(el, 'Enter');
+      pressKey(box, 'Enter');
       await sleep(350);
       // 起止时间的「开始」要等「结束」也填了才算数，这里先不让它失焦
       if (isStart) return true;
