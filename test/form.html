@@ -57,6 +57,9 @@
   <tr><th>开始时间</th><td><input id="w3" placeholder="YYYY.MM"></td></tr>
   <tr><th>工作内容</th><td><textarea id="w4"></textarea></td></tr>
 </table>
+<h3>语言能力</h3>
+<div class="form-item"><span class="label">语言类型</span>
+  <select id="l1"><option value="">请选择语言类型</option><option value="ja">日语</option><option value="en">英语</option></select></div>
 
 <h2>English ATS style</h2>
 <div><input id="g1" name="first_name" aria-label="First Name"></div>
@@ -104,7 +107,7 @@ const EXPECT = [
   ['自定义:期望行业', v('c10'), '互联网'], ['已有内容不覆盖', v('c11'), '已有内容'],
   ['学校1', v('e1'), '示例大学'], ['学校1城市', v('e1c'), '北京'], ['学历1', v('e2'), '2'], ['专业1', v('e3'), '统计学'],
   ['开始(month)', v('e4'), '2023-09'], ['结束(date)', v('e5'), '2025-06-01'],
-  ['学校2', v('e6'), '样例学院'], ['学历2', v('e7'), '3'], ['专业2', v('e8'), '数学'], ['是否全日制(默认全日制)', v('e9'), '1'],
+  ['学校2', v('e6'), '样例学院'], ['学历2', v('e7'), '3'], ['专业2', v('e8'), '数学'], ['语言类型(默认英语)', v('l1'), 'en'], ['是否全日制(默认全日制)', v('e9'), '1'],
   ['公司', v('w1'), '示例科技'], ['公司规模(不填)', v('w1s'), ''], ['职位', v('w2'), '数据分析实习生'],
   ['开始(YYYY.MM)', v('w3'), '2024.06'], ['工作内容', v('w4'), '负责报表与归因分析'],
   ['First name', v('g1'), 'San'], ['Last name', v('g2'), 'Zhang'], ['Email', v('g3'), 'zhangsan@example.com'],

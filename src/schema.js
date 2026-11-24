@@ -171,7 +171,7 @@
         hint: '网站把语言拆成「语言 / 熟练程度 / 证书 / 成绩」几栏时用这里；只有一个大文本框时用「其他」里的语言能力。',
         repeat: true,
         fields: [
-          f('name', '语言', /语言名称|语种|语言类别|^语言$/, { fallback: '英语' }),
+          f('name', '语言', /语言名称|语种|语言类别|语言类型|^语言$/, { fallback: '英语' }),
           f('level', '熟练程度 / 听说能力', /熟练程度|掌握程度|精通程度|语言水平|听说|口语|proficien/, { fallback: '精通', level: true, placeholder: '如 熟练 / 精通' }),
           f('level2', '读写能力（不填则同上）', /读写/, { alt: 'level', level: true }),
           f('cert', '证书', null, { generic: 'cert', placeholder: '如 英语六级 / 托福 / 雅思' }),
