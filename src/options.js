@@ -318,6 +318,7 @@ function renderFiles() {
   $('photo-name').textContent = files.photo ? `照片：${files.photo.name}（${kb(files.photo.size)}）` : '还没有照片';
   $('del-photo').hidden = !files.photo;
   renderProfiles();
+  renderAIPick();
 }
 // 「文档」里上传或删除了简历：重新读一遍，下拉框跟着变
 document.addEventListener('ra-files-changed', async () => {
@@ -488,27 +489,70 @@ $('ai-import').addEventListener('click', async () => {
     Telemetry.send('paste_import', { ok: false });
   }
 });
-// 「文档」里用 AI 整理好的简历：和手动粘贴走同一套导入，导入到正在编辑的这套资料
-document.addEventListener('ra-ai-import', async (e) => {
-  let detail;
+// —— 用插件自带的 AI 整理：选一份「文档」里的 PDF，发到我们的服务器交给 AI 读取 ——
+function isPdf(f) {
+  return /pdf/i.test(f.type || '') || /\.pdf$/i.test(f.name);
+}
+function renderAIPick() {
+  if (!AI_ENDPOINT) return;
+  $('way-ai').hidden = false;
+  const pdfs = (files.resumes || []).filter(isPdf).sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+  const want = $('ai-pick').value || (book.list[cur] && book.list[cur].resume);
+  $('ai-pick').replaceChildren(...pdfs.map((f) => el('option', { value: f.name, textContent: f.name })));
+  if (pdfs.some((f) => f.name === want)) $('ai-pick').value = want;
+  $('ai-pick').hidden = $('ai-run').hidden = !pdfs.length;
+  $('ai-nofile').hidden = !!pdfs.length;
+}
+$('ai-run').addEventListener('click', async () => {
+  const f = (files.resumes || []).find((x) => x.name === $('ai-pick').value);
+  if (!f) return;
+  const btn = $('ai-run');
+  btn.disabled = true;
+  btn.textContent = '正在整理…';
+  const t0 = Date.now();
+  let err = '';
   try {
-    if (cur == null) throw new Error('先在「我的资料」里解锁，再整理简历');
-    const n = importAI(e.detail.text, false);
-    if (!n) throw new Error('AI 没从这份简历里读出内容，换一份 PDF 或用复制粘贴的方式');
+    let res;
+    try {
+      res = await fetch(AI_ENDPOINT + '/v1/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ install: await Telemetry.id(), pdf: f.data }),
+        credentials: 'omit',
+        referrerPolicy: 'no-referrer',
+      });
+    } catch {
+      err = 'network';
+      throw new Error('连不上 AI 整理服务，检查一下网络再试；也可以改用「用你自己的 AI」');
+    }
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok || !out.text) {
+      err = out.error || 'http_' + res.status;
+      throw new Error(out.message || 'AI 整理失败了，过一会儿再试');
+    }
+    const n = importAI(out.text, $('ai-replace').checked);
+    if (!n) {
+      err = 'empty';
+      throw new Error('AI 没从这份简历里读出内容，换一份 PDF 或用「用你自己的 AI」的方式');
+    }
     renderEditor();
     await saveNow();
     const miss = missingCount();
-    flash(`已从「${e.detail.source}」整理出 ${n} 项，填进了「${book.list[cur].name}」。` + (miss ? `还有 ${miss} 个必填项没填，往下找红框` : '往下检查一遍'), miss ? 'err' : 'ok');
-    detail = { count: n, missing: miss };
-  } catch (err) {
-    detail = { error: err.message };
+    flash(`已从「${f.name}」整理出 ${n} 项。` + (miss ? `还有 ${miss} 个必填项没填，往下找红框` : '往下检查一遍'), miss ? 'err' : 'ok');
+    Telemetry.send('ai_parse', { ok: true, ms: Date.now() - t0, fields: n });
+    Telemetry.firstAction('ai_import');
+    $('s-fill').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    flash(e.message, 'err');
+    Telemetry.send('ai_parse', { ok: false, ms: Date.now() - t0, err });
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '用 AI 整理';
   }
-  document.dispatchEvent(new CustomEvent('ra-ai-imported', { detail }));
 });
 // 隐私：只有配置了云端服务器时才有可说的
 if (AI_ENDPOINT) {
   $('s-privacy').hidden = false;
-  $('ai-cloud-tip').hidden = false;
   Telemetry.isOff().then((off) => ($('telemetry-on').checked = !off));
   $('telemetry-on').addEventListener('change', (e) => Telemetry.setOff(!e.target.checked));
 }

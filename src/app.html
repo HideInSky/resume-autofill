@@ -24,7 +24,7 @@
   <div class="page" id="view-profile" data-view-panel="profile">
     <header>
       <h1>我的资料</h1>
-      <p class="muted">只保存在这台电脑的浏览器里。从上到下做一遍，改动自动保存。</p>
+      <p class="muted">只保存在这台电脑的浏览器里。从上到下做一遍，改动自动保存。<button id="tour-again" class="link">新手指引</button></p>
     </header>
 
     <!-- 只有以前设置过加密、且还没解锁时才会出现 -->
@@ -42,10 +42,10 @@
     <main id="editor" hidden>
       <nav class="steps-nav" aria-label="步骤">
         <a href="#s-profile">资料方案</a>
-        <a href="#s-import">1 导入</a>
-        <a href="#s-fill">2 补全</a>
-        <a href="#s-files">3 文件</a>
-        <a href="#s-auto">4 自动填写</a>
+        <a href="#s-import">导入简历</a>
+        <a href="#s-fill">检查补全</a>
+        <a href="#s-files">简历和照片</a>
+        <a href="#s-auto">自动填写</a>
         <a href="#s-backup">备份</a>
       </nav>
 
@@ -62,35 +62,42 @@
       </section>
 
       <section id="s-import" class="card">
-        <h2>第 1 步　从简历导入</h2>
-        <p class="muted">让 AI 读你的简历，省得逐项复制。下面这种方式不经过我们的服务器：你自己把简历交给 ChatGPT 或 Claude，再把结果粘贴回来。也可以跳过，直接手填第 2 步。</p>
-        <p class="muted" id="ai-cloud-tip" hidden>想省事：在顶部<a href="#documents">「文档」</a>里上传 PDF，选「整理进我的资料」，由我们的服务器交给 AI 整理（PDF 会发到云端）。</p>
-        <ol class="muted steps">
-          <li>点「复制提示词」。</li>
-          <li>在 ChatGPT 或 Claude 里上传简历 PDF，粘贴提示词并发送。</li>
-          <li>把它返回的内容整段粘贴到下面，点「导入」。</li>
-        </ol>
-        <div class="row">
-          <button id="ai-prompt" class="primary">复制提示词</button>
-          <span class="muted">提示词只含字段说明和空白模板，不含你的个人信息。</span>
+        <h2>导入简历</h2>
+        <p class="muted">把简历内容整理进下面的资料，省得一项项填。两种方式选一种，也可以跳过，直接往下填。</p>
+        <div class="import-ways">
+          <div class="way" id="way-ai" hidden>
+            <h3>用插件自带的 AI 整理</h3>
+            <p class="muted">选一份在「文档」里上传过的 PDF，几十秒就整理好。PDF 会发到投简历神器的服务器交给 AI 读取，整理完不保存。</p>
+            <div class="row">
+              <select id="ai-pick" aria-label="要整理的简历"></select>
+              <button id="ai-run" class="primary">用 AI 整理</button>
+            </div>
+            <p class="muted" id="ai-nofile" hidden>还没有 PDF 简历，先到<a href="#documents">「文档」</a>上传一份。</p>
+          </div>
+          <div class="way">
+            <h3>用你自己的 AI</h3>
+            <p class="muted">不经过我们的服务器：在 ChatGPT 或 Claude 里上传简历 PDF，粘贴提示词发送，再把它返回的内容粘贴到这里。</p>
+            <div class="row">
+              <button id="ai-prompt">复制提示词</button>
+              <span class="muted">提示词不含你的个人信息。</span>
+            </div>
+            <textarea id="ai-text" class="ai-text" placeholder="把 AI 返回的内容粘贴到这里" aria-label="AI 返回的内容"></textarea>
+            <div class="row"><button id="ai-import" class="primary">导入</button></div>
+          </div>
         </div>
-        <textarea id="ai-text" class="ai-text" placeholder="把 AI 返回的内容粘贴到这里" aria-label="AI 返回的内容"></textarea>
-        <div class="row">
-          <button id="ai-import" class="primary">导入</button>
-          <label class="check"><input id="ai-replace" type="checkbox"> 先清空已有的经历再导入</label>
-        </div>
-        <p class="muted">换了新简历可以直接再导入一次：证件号、账号密码这些你自己填的不会丢，简历里有的内容换成新的。</p>
+        <label class="check"><input id="ai-replace" type="checkbox"> 先清空已有的经历再导入</label>
+        <p class="muted">导入后往下检查一遍。换了新简历可以再导入一次：证件号、账号密码这些你自己填的不会丢。</p>
       </section>
 
       <section id="s-fill" class="card">
-        <h2>第 2 步　检查并补全</h2>
+        <h2>检查并补全</h2>
         <p class="muted">带 <b class="req">*</b> 的必填。
           <span class="key need">红框</span> 还没填　<span class="key dflt">蓝框</span> 替你填的默认值，不对就改　<span class="key">灰框</span> 已填好</p>
       </section>
       <div id="sections"></div>
 
       <section id="s-files" class="card">
-        <h2>第 3 步　简历文件和照片</h2>
+        <h2>简历和照片</h2>
         <p class="muted">遇到上传简历、上传照片的地方会自动传上去。简历 PDF 在顶部的<a href="#documents">「文档」</a>里上传和管理，这里选这套资料用哪一份。</p>
         <div class="grid"><label class="field"><span>这套资料上传哪份简历</span><select id="prof-resume"></select></label></div>
         <div class="row">
@@ -102,7 +109,7 @@
       </section>
 
       <section id="s-auto" class="card">
-        <h2>第 4 步　自动填写</h2>
+        <h2>自动填写</h2>
         <p class="muted">打开后，进入任何网页都会直接填好认得的表单，翻到下一步也会接着填。关闭后只在你点扩展图标里的「填写当前页面」时才填。不投简历时建议关掉。</p>
         <div class="row">
           <button id="grant-all" class="primary">打开自动填写</button>
@@ -122,7 +129,7 @@
 
       <section id="s-privacy" class="card" hidden>
         <h2>隐私</h2>
-        <p class="muted">资料和简历只存在这台电脑的浏览器里。只有你在「文档」里选「整理进我的资料」时，那一份 PDF 才会发到我们的服务器交给 AI 整理，整理完不保存。</p>
+        <p class="muted">资料和简历只存在这台电脑的浏览器里。只有你在上面「导入简历」里点「用 AI 整理」时，选中的那一份 PDF 才会发到我们的服务器交给 AI 整理，整理完不保存。</p>
         <label class="check"><input id="telemetry-on" type="checkbox" checked> 发送匿名使用统计（只有「点了哪个按钮」这类信息，不含任何资料、简历内容和网址）</label>
       </section>
 
@@ -222,15 +229,6 @@
     <div id="docs"></div>
   </div>
 
-  <dialog id="ai-dialog" class="sheet">
-    <form method="dialog">
-      <header class="sheet-head"><h2>用 AI 整理进「我的资料」？</h2><button value="skip" class="icon-x" aria-label="关闭">×</button></header>
-      <p>会把「<b id="ai-file"></b>」发到投简历神器的服务器，交给 Claude（Anthropic 的 AI）读出姓名、学校、经历等内容，整理好后填进「我的资料」。整理结果只存在你的浏览器里；服务器不保存简历，也不保存整理结果。</p>
-      <p class="muted">不想上传到云端：选「只保存文件」，再到<a href="#profile" id="ai-manual">「我的资料」第 1 步</a>复制提示词，自己用 ChatGPT 或 Claude 整理后粘贴导入。</p>
-      <footer class="sheet-foot"><span class="spacer"></span><button value="skip">只保存文件</button><button value="parse" class="primary">整理进我的资料</button></footer>
-    </form>
-  </dialog>
-
   <div id="status" role="status" hidden></div>
 
   <script src="schema.js"></script>
@@ -246,5 +244,6 @@
   <script src="jobs-config.js"></script>
   <script src="jobs.js"></script>
   <script src="app.js"></script>
+  <script src="tour.js"></script>
 </body>
 </html>

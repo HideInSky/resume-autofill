@@ -1,5 +1,5 @@
 // 投简历神器的云端服务（Cloudflare Worker）：
-//   POST /v1/parse  用户在「文档」里同意后，把简历 PDF 交给 Claude 整理成「我的资料」的 JSON
+//   POST /v1/parse  用户在「我的资料」里点「用 AI 整理」后，把简历 PDF 交给 Claude 整理成资料的 JSON
 //   POST /v1/event  匿名使用统计（只有事件名和几个计数，不含任何资料）
 // 简历和整理结果都不落盘、不写日志；数据库里只记次数（用来限额）和匿名事件。
 import Anthropic from '@anthropic-ai/sdk';
@@ -19,7 +19,7 @@ const MAX_PDF_B64 = 2_800_000; // 约 2 MB 的 PDF；简历一般几百 KB
 const DAY = 86_400_000;
 // 扩展会发的事件；别的一律丢掉
 const EVENTS = new Set([
-  'first_open', 'first_action', 'nav', 'doc_upload', 'doc_limit', 'ai_offer', 'ai_consent', 'ai_parse', 'prompt_copy', 'paste_import',
+  'first_open', 'first_action', 'nav', 'doc_upload', 'doc_limit', 'ai_parse', 'prompt_copy', 'paste_import', 'tour',
 ]);
 
 const num = (v, d) => (Number.isFinite(+v) && +v > 0 ? +v : d);
@@ -59,10 +59,10 @@ async function parse(req, env) {
     `SELECT (SELECT COUNT(*) FROM parses WHERE install = ?1 AND at > ?3 AND ${used}) AS mine, (SELECT COUNT(*) FROM parses WHERE ip = ?2 AND at > ?3 AND ${used}) AS ip, (SELECT COUNT(*) FROM parses WHERE at > ?3 AND ${used}) AS total`
   ).bind(install, ip, since).first();
   if (c.mine >= num(env.PER_INSTALL_DAY, 8) || c.ip >= num(env.PER_IP_DAY, 20)) {
-    return fail(429, 'quota_user', '今天的 AI 整理次数用完了，明天再试；也可以到「我的资料」第 1 步复制提示词，自己整理后粘贴导入。');
+    return fail(429, 'quota_user', '今天的 AI 整理次数用完了，明天再试；也可以用「用你自己的 AI」的方式：复制提示词，自己整理后粘贴导入。');
   }
   if (c.total >= num(env.DAILY_LIMIT, 500)) {
-    return fail(503, 'quota_all', '今天大家的 AI 整理额度用完了，明天再试；也可以到「我的资料」第 1 步复制提示词，自己整理后粘贴导入。');
+    return fail(503, 'quota_all', '今天大家的 AI 整理额度用完了，明天再试；也可以用「用你自己的 AI」的方式：复制提示词，自己整理后粘贴导入。');
   }
   const row = await env.DB.prepare('INSERT INTO parses (at, install, ip) VALUES (?1, ?2, ?3) RETURNING id').bind(now, install, ip).first();
   const done = (fields) =>

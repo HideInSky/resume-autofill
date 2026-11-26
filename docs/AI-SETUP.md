@@ -1,6 +1,6 @@
 # AI 整理简历：充值、部署和看数据
 
-用户在「文档」里上传简历 PDF，同意后扩展把它发到我们的服务器（`server/`，一个 Cloudflare Worker），服务器拿你的 Claude API Key 调 Claude Haiku 5.5，把简历整理成「我的资料」的内容。API Key 只放在服务器上，不放进扩展：扩展包谁都能解开，Key 放进去就等于公开了。
+用户先在「文档」里上传简历 PDF（只存在浏览器里），再到「我的资料 → 导入简历」选一份点「用 AI 整理」，扩展才把它发到我们的服务器（`server/`，一个 Cloudflare Worker），服务器拿你的 Claude API Key 调 Claude Haiku 5.5，把简历整理成「我的资料」的内容。API Key 只放在服务器上，不放进扩展：扩展包谁都能解开，Key 放进去就等于公开了。
 
 没部署之前（`src/ai-config.js` 里 `AI_ENDPOINT` 是空的），扩展不会显示 AI 整理，也不发任何统计，和以前一样。
 
@@ -70,7 +70,7 @@ npm run deploy
 node scripts/ai-endpoint.mjs https://toujianli-ai.<你的名字>.workers.dev
 ```
 
-这一步会同时改 `src/ai-config.js` 和 `manifest.json` 的联网白名单。然后在 `chrome://extensions` 里刷新扩展，到「文档」上传一份简历试试。
+这一步会同时改 `src/ai-config.js` 和 `manifest.json` 的联网白名单。然后在 `chrome://extensions` 里刷新扩展：到「文档」上传一份简历，再到「我的资料 → 导入简历」点「用 AI 整理」试试。
 
 上架拿到扩展 ID 后，在 `wrangler.toml` 里把 `ALLOWED_ORIGINS` 设成 `chrome-extension://<扩展 ID>`，再 `npm run deploy`，别的网页就调不了这个服务器了。
 
@@ -86,16 +86,16 @@ node scripts/ai-endpoint.mjs https://toujianli-ai.<你的名字>.workers.dev
 npx wrangler d1 execute toujianli --remote --command "SELECT json_extract(props,'$.view') AS view, COUNT(*) AS n FROM events WHERE event='first_open' GROUP BY view"
 ```
 
-第一次打开后先做了什么（直接上传 PDF / 去我的资料 / 复制提示词 / 粘贴导入）：
+第一次打开后先做了什么（直接上传 PDF / 去我的资料 / 用自带 AI 整理 / 复制提示词 / 粘贴导入）：
 
 ```bash
 npx wrangler d1 execute toujianli --remote --command "SELECT json_extract(props,'$.action') AS action, COUNT(*) AS n FROM events WHERE event='first_action' GROUP BY action ORDER BY n DESC"
 ```
 
-上传后选了 AI 整理还是只保存文件：
+新手指引看到第几步、看完还是跳过：
 
 ```bash
-npx wrangler d1 execute toujianli --remote --command "SELECT json_extract(props,'$.choice') AS choice, COUNT(*) AS n FROM events WHERE event='ai_consent' GROUP BY choice"
+npx wrangler d1 execute toujianli --remote --command "SELECT props, COUNT(*) AS n FROM events WHERE event='tour' AND (props LIKE '%done%' OR props LIKE '%skip%') GROUP BY props"
 ```
 
 AI 整理的次数、成功率和花了多少 token：
@@ -104,7 +104,7 @@ AI 整理的次数、成功率和花了多少 token：
 npx wrangler d1 execute toujianli --remote --command "SELECT date(at/1000,'unixepoch') AS day, COUNT(*) AS n, SUM(ok) AS ok, SUM(in_tokens) AS input, SUM(out_tokens) AS output FROM parses GROUP BY day ORDER BY day DESC LIMIT 14"
 ```
 
-扩展会发的事件：`first_open`（第一次打开，落在哪页）、`first_action`（第一个操作）、`nav`（切换页面）、`doc_upload`、`doc_limit`（超过 8 份被拦下）、`ai_offer`、`ai_consent`、`ai_parse`、`prompt_copy`、`paste_import`。都不含资料、简历内容和网址；用户可以在「我的资料 → 隐私」里关掉。
+扩展会发的事件：`first_open`（第一次打开，落在哪页）、`first_action`（第一个操作）、`nav`（切换页面）、`doc_upload`、`doc_limit`（超过 8 份被拦下）、`ai_parse`（用自带 AI 整理，成功没有）、`prompt_copy`、`paste_import`、`tour`（新手指引）。都不含资料、简历内容和网址；用户可以在「我的资料 → 隐私」里关掉。
 
 ## 改了字段之后
 

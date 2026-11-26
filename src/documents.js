@@ -66,7 +66,6 @@
         item('查看', () => open(f)),
         item('重命名', () => rename(f)),
         item('下载', () => h('a', { href: urlOf(f), download: f.name }).click()),
-        AI_ENDPOINT && isPdf(f) ? item('用 AI 整理进我的资料', () => offerAI(f)) : null,
         def && !usedBy(f).includes(def.name) ? item(`设为「${def.name}」使用的简历`, () => useFor(f)) : null,
         item('删除', () => remove([f]), 'danger'),
       ].filter(Boolean)
@@ -145,15 +144,13 @@
           { className: 'd-empty' },
           h('b', { textContent: '先上传你的简历' }),
           h('span', { className: 'muted', textContent: `网申页面遇到上传简历的地方会自动传上去。每份不超过 5 MB，最多 ${DOC_LIMIT} 份。` }),
-          AI_ENDPOINT ? h('span', { className: 'muted', textContent: '上传后可以让 AI 把简历内容整理进「我的资料」，省得一项项填。' }) : null,
           up,
           h(
             'p',
             { className: 'muted d-empty-note' },
-            AI_ENDPOINT ? '不想把 PDF 上传到云端？' : '想让 AI 帮你填资料？',
-            '到',
-            h('a', { href: '#s-import', textContent: '「我的资料」第 1 步' }),
-            '复制提示词，自己用 ChatGPT 或 Claude 整理简历，再把结果粘贴回来。'
+            '上传只是存在你的浏览器里。想把简历内容整理进资料，到',
+            h('a', { href: '#s-import', textContent: '「我的资料」→ 导入简历' }),
+            '。'
           )
         )
       );
@@ -210,63 +207,6 @@
     }
   }
 
-  // —— 用 AI 把简历整理进「我的资料」（用户同意后才把这份 PDF 发到服务器）——
-  const isPdf = (f) => /pdf/i.test(f.type || '') || /\.pdf$/i.test(f.name);
-  function offerAI(f) {
-    const dlg = $('ai-dialog');
-    $('ai-file').textContent = f.name;
-    Telemetry.send('ai_offer');
-    dlg.onclose = () => {
-      const choice = dlg.returnValue === 'parse' ? 'parse' : 'skip';
-      Telemetry.send('ai_consent', { choice });
-      if (choice === 'parse') parseAI(f);
-    };
-    dlg.returnValue = '';
-    dlg.showModal();
-  }
-  let parsing = false;
-  async function parseAI(f) {
-    if (parsing) return;
-    parsing = true;
-    const t0 = Date.now();
-    const box = $('status');
-    box.textContent = `正在整理「${f.name}」，大约要 20 秒…`;
-    box.hidden = false;
-    clearTimeout(flash.t);
-    let err = '';
-    try {
-      const res = await fetch(AI_ENDPOINT + '/v1/parse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ install: await Telemetry.id(), pdf: f.data }),
-        credentials: 'omit',
-        referrerPolicy: 'no-referrer',
-      });
-      const out = await res.json().catch(() => ({}));
-      if (!res.ok || !out.text) {
-        err = out.error || 'http_' + res.status;
-        throw new Error(out.message || 'AI 整理失败了，过一会儿再试');
-      }
-      // 交给「我的资料」那边导入（和手动粘贴导入走同一条路）
-      const result = await new Promise((resolve) => {
-        document.addEventListener('ra-ai-imported', (e) => resolve(e.detail), { once: true });
-        document.dispatchEvent(new CustomEvent('ra-ai-import', { detail: { text: out.text, source: f.name } }));
-      });
-      if (result.error) {
-        err = 'import';
-        throw new Error(result.error);
-      }
-      Telemetry.send('ai_parse', { ok: true, ms: Date.now() - t0, fields: result.count });
-      location.hash = '#s-fill';
-    } catch (e) {
-      if (!err) err = 'network';
-      Telemetry.send('ai_parse', { ok: false, ms: Date.now() - t0, err });
-      flash(e.message && err !== 'network' ? e.message : '连不上 AI 整理服务，检查一下网络再试');
-    } finally {
-      parsing = false;
-    }
-  }
-
   $('d-grid').addEventListener('click', () => {
     view = 'grid';
     localStorage.setItem('ra-docs-view', view);
@@ -293,7 +233,6 @@
     files = await Vault.loadFiles();
     files.resumes = files.resumes || [];
     let n = 0;
-    let lastPdf = null;
     let refused = 0;
     for (const f of chosen) {
       if (f.size > MAX) {
@@ -310,7 +249,6 @@
       files.resumes = files.resumes.filter((x) => x.name !== f.name);
       const item = { name: f.name, type: f.type, size: f.size, data, addedAt: Date.now() };
       files.resumes.push(item);
-      if (isPdf(item)) lastPdf = item;
       n++;
     }
     if (refused) {
@@ -323,7 +261,6 @@
     flash(`上传了 ${n} 份`);
     Telemetry.send('doc_upload', { n, total: files.resumes.length });
     Telemetry.firstAction('upload_pdf');
-    if (lastPdf && AI_ENDPOINT) offerAI(lastPdf);
   });
   document.addEventListener('click', (e) => {
     for (const d of document.querySelectorAll('details.menu[open]')) if (!d.contains(e.target)) d.open = false;

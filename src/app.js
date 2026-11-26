@@ -27,6 +27,7 @@
     if (v === last) return; // 同一页里的步骤链接，不算换页
     last = v;
     scrollTo(0, 0);
+    if (document.body.dataset.tour) return; // 新手指引带着翻的页，不算用户的操作
     // 用户自己切到了哪一页（第一次打开后先去了哪里）
     Telemetry.send('nav', { view: v });
     const action = { profile: 'open_profile', jobs: 'open_jobs', tracker: 'open_tracker' }[v];
