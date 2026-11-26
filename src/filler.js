@@ -1351,12 +1351,26 @@
     // 社招常见的短表单（如滴滴）：只有姓名、电话、邮箱加一个上传简历的框，也算
     const shortForm = secs.has('基本信息') && (globalThis.__raResumeBox || /投递|申请|apply|application|resume.?submit|deliver/i.test(`${location.pathname} ${document.title}`));
     const isApplication = ((secs.has('教育经历') || secs.has('最高学历')) && secs.has('工作 / 实习经历')) || shortForm;
-    if (!opts.dry && isApplication && window === window.top) {
-      watchSubmit();
-      askToRecord();
+    // 「记到投递记录」的提示：ask = 像网申或招聘页就问（默认）；always = 每个页面都显示；off = 不提示
+    const mode = opts.record || 'ask';
+    if (!opts.dry && window === window.top) {
+      if (isApplication) watchSubmit();
+      if (mode === 'always' || (mode === 'ask' && (isApplication || looksLikeJobPage()))) askToRecord();
     }
     return report;
   }
+
+  // 页面上写着「招聘」这类字样（或网址像招聘站）：多半是投递页
+  function looksLikeJobPage() {
+    const head = `${document.title} ${location.hostname} ${location.pathname}`;
+    if (/招聘|网申|投递|应聘|校招|社招|职位详情|zhaopin|career|recruit|talent|campus|\bjobs?\b/i.test(head)) return true;
+    return /招聘|网申|投递简历|应聘/.test((document.body && document.body.innerText.slice(0, 8000)) || '');
+  }
+  // 不填表、只问要不要记（侧边栏设置成「每个页面都显示」，或打开的是招聘页）
+  globalThis.__raAskRecord = (mode) => {
+    if (window !== window.top || mode === 'off') return;
+    if (mode === 'always' || looksLikeJobPage()) askToRecord();
+  };
 
   // —— 页面右下角的小卡片（closed shadow root：不受页面样式影响，填表时也扫不到它）——
   function card() {

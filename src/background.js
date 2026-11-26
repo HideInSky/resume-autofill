@@ -37,7 +37,7 @@ async function autofill(sender) {
   const reports = await runFill({
     tabId,
     frameIds: [sender.frameId],
-    opts: { auto: true, overwrite: false, fillPassword: settings.autoPassword !== false, save: settings.autoSave === true },
+    opts: { auto: true, overwrite: false, fillPassword: settings.autoPassword !== false, save: settings.autoSave === true, record: settings.recordPrompt || 'ask' },
   });
   const n = reports.reduce((sum, r) => sum + r.filled.length, 0);
   if (n) badge(tabId, String(n), '#15803d');
@@ -69,6 +69,17 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'autofill' && sender.tab) autofill(sender).catch((e) => console.warn('autofill', e));
+  // 打开了自动填写的网站，页面一加载：按设置决定要不要在右下角问「记到投递记录？」
+  if (msg && msg.type === 'record-card' && sender.tab && sender.frameId === 0) {
+    (async () => {
+      const { settings = {} } = await chrome.storage.local.get('settings');
+      const mode = settings.recordPrompt || 'ask';
+      if (mode === 'off' || (mode === 'ask' && !msg.job)) return;
+      const target = { tabId: sender.tab.id, frameIds: [0] };
+      await chrome.scripting.executeScript({ target, files: ['src/schema.js', 'src/filler.js'] });
+      await chrome.scripting.executeScript({ target, func: (m) => globalThis.__raAskRecord && globalThis.__raAskRecord(m), args: [mode] });
+    })().catch((e) => console.warn('record-card', e));
+  }
   // 网申页面上的小卡片：这一页记过没有、是不是从「岗位」里点进来的
   if (msg && msg.type === 'page-check' && sender.tab) {
     (async () => {

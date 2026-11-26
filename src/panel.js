@@ -34,8 +34,15 @@ async function refresh() {
   renderAuto();
   renderProfiles();
   renderFill();
-  chrome.storage.local.get('settings').then(({ settings = {} }) => ($('opt-save').checked = settings.autoSave === true));
+  chrome.storage.local.get('settings').then(({ settings = {} }) => {
+    $('opt-save').checked = settings.autoSave === true;
+    $('opt-record').value = settings.recordPrompt || 'ask';
+  });
 }
+$('opt-record').addEventListener('change', async (e) => {
+  const { settings = {} } = await chrome.storage.local.get('settings');
+  await chrome.storage.local.set({ settings: { ...settings, recordPrompt: e.target.value } });
+});
 
 // —— 标签页 ——
 function show(which) {
@@ -186,7 +193,7 @@ async function fill(forceOverwrite) {
   try {
     const reports = await runFill({
       tabId: tab.id,
-      opts: { overwrite: forceOverwrite === true || $('opt-overwrite').checked, fillPassword: $('opt-password').checked, save: $('opt-save').checked },
+      opts: { overwrite: forceOverwrite === true || $('opt-overwrite').checked, fillPassword: $('opt-password').checked, save: $('opt-save').checked, record: $('opt-record').value },
     });
     const n = reports.reduce((sum, r) => sum + r.filled.length, 0);
     const kept = reports.reduce((sum, r) => sum + r.kept, 0);
