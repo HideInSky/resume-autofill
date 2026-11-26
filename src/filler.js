@@ -873,12 +873,13 @@
   };
 
   // 传完简历，网站常弹「是否解析附件并填充简历内容？」：一律选「否」，免得解析结果盖掉刚填好的内容
-  const PARSE_ASK = /解析.{0,12}(简历|附件)|(简历|附件).{0,12}解析|覆盖.{0,6}(已填|当前|简历)/;
+  // 也包括滴滴的「是否根据本次上传的简历，覆盖候选人姓名、手机和邮箱输入信息？」
+  const PARSE_ASK = /解析.{0,12}(简历|附件)|(简历|附件).{0,12}解析|覆盖.{0,6}(已填|当前|简历)|(根据|按照?|用).{0,10}(简历|附件).{0,20}(覆盖|填充|更新|回填)|覆盖.{0,16}(信息|内容)/;
   const PARSE_NO = /^(否|不|取消|暂不|仅)|仅.{0,4}(附件|上传)|不(需要|解析|覆盖|更新)/;
   function declineParse() {
     const end = Date.now() + 15000;
     const tick = () => {
-      const boxes = [...document.querySelectorAll('[role="dialog"],[class*="modal"],[class*="Modal"],[class*="dialog"],[class*="Dialog"],[class*="confirm"],[class*="popup"]')].filter(
+      const boxes = [...document.querySelectorAll('[role="dialog"],[class*="modal"],[class*="Modal"],[class*="dialog"],[class*="Dialog"],[class*="confirm"],[class*="popup"],[class*="popover"]')].filter(
         (d) => visible(d) && PARSE_ASK.test(d.textContent) && d.textContent.length < 400
       );
       for (const d of boxes) {
