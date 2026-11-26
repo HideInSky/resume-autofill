@@ -523,7 +523,7 @@ $('ai-run').addEventListener('click', async () => {
       });
     } catch {
       err = 'network';
-      throw new Error('连不上 AI 整理服务，检查一下网络再试；也可以改用「用你自己的 AI」');
+      throw new Error('连不上 AI 整理服务，检查一下网络再试；也可以改用「用你自己的 AI 整理」');
     }
     const out = await res.json().catch(() => ({}));
     if (!res.ok || !out.text) {
@@ -533,7 +533,7 @@ $('ai-run').addEventListener('click', async () => {
     const n = importAI(out.text, $('ai-replace').checked);
     if (!n) {
       err = 'empty';
-      throw new Error('AI 没从这份简历里读出内容，换一份 PDF 或用「用你自己的 AI」的方式');
+      throw new Error('AI 没从这份简历里读出内容，换一份 PDF 或用「用你自己的 AI 整理」');
     }
     renderEditor();
     await saveNow();

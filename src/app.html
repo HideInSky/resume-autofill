@@ -24,7 +24,7 @@
   <div class="page" id="view-profile" data-view-panel="profile">
     <header>
       <h1>我的资料</h1>
-      <p class="muted">只保存在这台电脑的浏览器里。从上到下做一遍，改动自动保存。<button id="tour-again" class="link">新手指引</button></p>
+      <p class="muted">你的资料只存在你的浏览器里。从上到下填一遍，改动自动保存。<button id="tour-again" class="link">新手指引</button></p>
     </header>
 
     <!-- 只有以前设置过加密、且还没解锁时才会出现 -->
@@ -63,11 +63,11 @@
 
       <section id="s-import" class="card">
         <h2>导入简历</h2>
-        <p class="muted">把简历内容整理进下面的资料，省得一项项填。两种方式选一种，也可以跳过，直接往下填。</p>
+        <p class="muted">把简历内容整理进资料，省得一项项填。也可以跳过，直接往下填。</p>
         <div class="import-ways">
           <div class="way" id="way-ai" hidden>
             <h3>用插件自带的 AI 整理</h3>
-            <p class="muted">选一份在「文档」里上传过的 PDF，几十秒就整理好。PDF 会发到投简历神器的服务器交给 AI 读取，整理完不保存。</p>
+            <p class="muted">选一份「文档」里的 PDF，交给 AI 整理，几十秒就好，整理完不保存。</p>
             <div class="row">
               <select id="ai-pick" aria-label="要整理的简历"></select>
               <button id="ai-run" class="primary">用 AI 整理</button>
@@ -75,8 +75,8 @@
             <p class="muted" id="ai-nofile" hidden>还没有 PDF 简历，先到<a href="#documents">「文档」</a>上传一份。</p>
           </div>
           <div class="way">
-            <h3>用你自己的 AI</h3>
-            <p class="muted">不经过我们的服务器：在 ChatGPT 或 Claude 里上传简历 PDF，粘贴提示词发送，再把它返回的内容粘贴到这里。</p>
+            <h3>用你自己的 AI 整理</h3>
+            <p class="muted">在 ChatGPT 或 Claude 里上传简历 PDF，粘贴提示词发送，再把返回的内容粘贴到这里。</p>
             <div class="row">
               <button id="ai-prompt">复制提示词</button>
               <span class="muted">提示词不含你的个人信息。</span>
@@ -129,7 +129,7 @@
 
       <section id="s-privacy" class="card" hidden>
         <h2>隐私</h2>
-        <p class="muted">资料和简历只存在这台电脑的浏览器里。只有你在上面「导入简历」里点「用 AI 整理」时，选中的那一份 PDF 才会发到我们的服务器交给 AI 整理，整理完不保存。</p>
+        <p class="muted">你的资料只存在你的浏览器里。</p>
         <label class="check"><input id="telemetry-on" type="checkbox" checked> 发送匿名使用统计（只有「点了哪个按钮」这类信息，不含任何资料、简历内容和网址）</label>
       </section>
 

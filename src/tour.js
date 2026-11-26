@@ -4,7 +4,7 @@
   const STEPS = [
     { view: 'documents', sel: '#d-upload', title: '先上传简历 PDF', text: '在「文档」里上传你的简历。网申时遇到上传简历的地方，会自动传上去。最多存 8 份。' },
     { view: 'profile', sel: '#s-profile', title: '选一套资料', text: '只投一类岗位，用默认这一套就行。要投几类岗位（经历写法、简历不同），可以各复制一套。' },
-    { view: 'profile', sel: '#s-import .import-ways', title: '把简历导入资料', text: '用插件自带的 AI 整理刚上传的 PDF，或者复制提示词交给你自己的 ChatGPT / Claude，再把结果粘贴回来。' },
+    { view: 'profile', sel: '#s-import .import-ways', title: '把简历导入资料', text: '用插件自带的 AI 整理刚上传的 PDF，或者用你自己的 AI 整理后粘贴回来。' },
     { view: 'profile', sel: '#s-fill', title: '检查并补全', text: '往下看一遍：红框是还没填的必填项，蓝框是替你填的默认值，不对就改。改动自动保存。' },
     { view: 'profile', sel: '#s-auto', title: '打开自动填写', text: '打开后，进入网申页面会直接填好。也可以点浏览器右上角的扩展图标，在侧边栏里点「填写当前页面」。' },
   ];
