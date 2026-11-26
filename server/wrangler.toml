@@ -1,0 +1,23 @@
+name = "toujianli-ai"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+# 最便宜的 Claude 模型
+MODEL = "claude-haiku-5-5"
+# 每个安装每天最多整理几次、同一网络每天最多几次、所有人每天合计最多几次（控制花费）
+PER_INSTALL_DAY = "8"
+PER_IP_DAY = "20"
+DAILY_LIMIT = "500"
+# 只接受扩展发来的请求：上架后填 chrome-extension://<扩展 ID>，多个用逗号隔开；空着表示不检查
+ALLOWED_ORIGINS = ""
+
+[[d1_databases]]
+binding = "DB"
+database_name = "toujianli"
+# 运行 npx wrangler d1 create toujianli 后，把它输出的 database_id 填在这里
+database_id = "REPLACE_WITH_DATABASE_ID"
+
+# 密钥不写在这里，用命令设置：
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put IP_SALT      （随便一串长的随机字符）

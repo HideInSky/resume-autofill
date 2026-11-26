@@ -8,23 +8,23 @@
 </head>
 <body class="app">
   <nav class="topbar" aria-label="主导航">
-    <a class="brand" href="#profile"><img src="../icons/icon.svg" alt="" width="26" height="26"><span>投简历神器</span></a>
+    <a class="brand" href="#documents"><img src="../icons/icon.svg" alt="" width="26" height="26"><span>投简历神器</span></a>
     <div class="topnav">
+      <a href="#documents" data-view="documents">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h6.5L15.5 6.5V17a.5.5 0 01-.5.5H5a.5.5 0 01-.5-.5V3a.5.5 0 01.5-.5z"/><path d="M11 2.5V7h4.5M7.5 11h5M7.5 14h5"/></svg>文档</a>
       <a href="#profile" data-view="profile">
         <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="6.5" r="3.2"/><path d="M3.5 17c.8-3.3 3.4-5 6.5-5s5.7 1.7 6.5 5"/></svg>我的资料</a>
       <a href="#jobs" data-view="jobs" hidden>
         <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5"/><path d="M12.3 12.3L17 17"/></svg>岗位</a>
       <a href="#tracker" data-view="tracker">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 3h9v14l-4.5-3.2L5.5 17z"/></svg>投递记录</a>
-      <a href="#documents" data-view="documents">
-        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h6.5L15.5 6.5V17a.5.5 0 01-.5.5H5a.5.5 0 01-.5-.5V3a.5.5 0 01.5-.5z"/><path d="M11 2.5V7h4.5M7.5 11h5M7.5 14h5"/></svg>文档</a>
     </div>
   </nav>
 
   <div class="page" id="view-profile" data-view-panel="profile">
     <header>
       <h1>我的资料</h1>
-      <p class="muted">只保存在这台电脑的浏览器里，扩展不联网。从上到下做一遍，改动自动保存。</p>
+      <p class="muted">只保存在这台电脑的浏览器里。从上到下做一遍，改动自动保存。</p>
     </header>
 
     <!-- 只有以前设置过加密、且还没解锁时才会出现 -->
@@ -63,7 +63,8 @@
 
       <section id="s-import" class="card">
         <h2>第 1 步　从简历导入</h2>
-        <p class="muted">让 AI 读你的简历，省得逐项复制。也可以跳过，直接手填第 2 步。</p>
+        <p class="muted">让 AI 读你的简历，省得逐项复制。下面这种方式不经过我们的服务器：你自己把简历交给 ChatGPT 或 Claude，再把结果粘贴回来。也可以跳过，直接手填第 2 步。</p>
+        <p class="muted" id="ai-cloud-tip" hidden>想省事：在顶部<a href="#documents">「文档」</a>里上传 PDF，选「整理进我的资料」，由我们的服务器交给 AI 整理（PDF 会发到云端）。</p>
         <ol class="muted steps">
           <li>点「复制提示词」。</li>
           <li>在 ChatGPT 或 Claude 里上传简历 PDF，粘贴提示词并发送。</li>
@@ -117,6 +118,12 @@
         <p class="muted">「岗位」里的数据来自各大厂招聘官网的公开岗位，每天更新一次。打开后，进入「岗位」时如果本机的数据超过一天，就从下面这个地址下载新的一份：只下载公开岗位数据，不上传任何东西，不带你的资料、账号或任何标识。关着时扩展完全不联网，「岗位」里只显示以前下载过的数据。</p>
         <label class="check"><input id="online-jobs" type="checkbox"> 打开「在线更新岗位」</label>
         <p class="muted">数据地址：raw.githubusercontent.com/HideInSky/resume-autofill（GitHub）</p>
+      </section>
+
+      <section id="s-privacy" class="card" hidden>
+        <h2>隐私</h2>
+        <p class="muted">资料和简历只存在这台电脑的浏览器里。只有你在「文档」里选「整理进我的资料」时，那一份 PDF 才会发到我们的服务器交给 AI 整理，整理完不保存。</p>
+        <label class="check"><input id="telemetry-on" type="checkbox" checked> 发送匿名使用统计（只有「点了哪个按钮」这类信息，不含任何资料、简历内容和网址）</label>
       </section>
 
       <section id="s-backup" class="card">
@@ -203,6 +210,7 @@
         <button id="d-grid" role="tab" aria-selected="true">网格</button>
         <button id="d-list" role="tab" aria-selected="false">列表</button>
       </div>
+      <span id="d-count" class="muted d-count"></span>
       <button id="d-upload" class="primary">上传 PDF</button>
       <input id="d-file" type="file" accept=".pdf,.doc,.docx" multiple hidden>
     </div>
@@ -214,9 +222,21 @@
     <div id="docs"></div>
   </div>
 
+  <dialog id="ai-dialog" class="sheet">
+    <form method="dialog">
+      <header class="sheet-head"><h2>用 AI 整理进「我的资料」？</h2><button value="skip" class="icon-x" aria-label="关闭">×</button></header>
+      <p>会把「<b id="ai-file"></b>」发到投简历神器的服务器，交给 Claude（Anthropic 的 AI）读出姓名、学校、经历等内容，整理好后填进「我的资料」。整理结果只存在你的浏览器里；服务器不保存简历，也不保存整理结果。</p>
+      <p class="muted">不想上传到云端：选「只保存文件」，再到<a href="#profile" id="ai-manual">「我的资料」第 1 步</a>复制提示词，自己用 ChatGPT 或 Claude 整理后粘贴导入。</p>
+      <footer class="sheet-foot"><span class="spacer"></span><button value="skip">只保存文件</button><button value="parse" class="primary">整理进我的资料</button></footer>
+    </form>
+  </dialog>
+
   <div id="status" role="status" hidden></div>
 
   <script src="schema.js"></script>
+  <script src="ai-config.js"></script>
+  <script src="telemetry.js"></script>
+  <script src="ai.js"></script>
   <script src="regions.js"></script>
   <script src="vault.js"></script>
   <script src="options.js"></script>

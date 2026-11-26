@@ -1364,7 +1364,7 @@
   function looksLikeJobPage() {
     const head = `${document.title} ${location.hostname} ${location.pathname}`;
     if (/招聘|网申|投递|应聘|校招|社招|职位详情|zhaopin|career|recruit|talent|campus|\bjobs?\b/i.test(head)) return true;
-    return /招聘|网申|投递简历|应聘/.test((document.body && document.body.innerText.slice(0, 8000)) || '');
+    return /招聘|应聘|投递简历/.test((document.body && document.body.innerText.slice(0, 8000)) || '');
   }
   // 不填表、只问要不要记（侧边栏设置成「每个页面都显示」，或打开的是招聘页）
   globalThis.__raAskRecord = (mode) => {

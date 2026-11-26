@@ -334,6 +334,10 @@ details[open] > summary { margin-bottom: 8px; color: var(--ink); }
 .d-headrow:hover { background: none; }
 .d-name { display: flex; gap: 8px; align-items: center; min-width: 0; }
 .d-empty { display: grid; gap: 6px; justify-items: center; margin-top: 18px; padding: 64px 16px; border: 1px dashed var(--line-strong); border-radius: 12px; text-align: center; }
+.d-empty > button { margin-top: 12px; }
+.d-empty-note { max-width: 46ch; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; }
+.d-count { font-size: 13px; white-space: nowrap; }
+#ai-dialog p { margin-top: 12px; line-height: 1.6; }
 #status .link { color: inherit; text-decoration: underline; }
 @media (max-width: 640px) { .topbar { gap: 8px; padding: 0 12px; } .brand span { display: none; } .d-row { grid-template-columns: 28px minmax(0, 1fr) 90px 36px; } .d-row > :nth-child(3), .d-row > :nth-child(5) { display: none; } }
 
