@@ -136,6 +136,12 @@
           f('company', '公司', /公司|单位|雇主|company|employer|organi[sz]ation/, { not: NOT_ATTR, anchor: true, req: true }),
           f('title', '职位', /职位|岗位|职务|job title|\btitle\b|position|\brole\b/, { req: true }),
           f('department', '部门', /部门|department|team/),
+          // 没填时按职位名猜：带「实习」的算实习
+          f('kind', '工作类型', /工作类型|工作性质|经历类型|实习\s*[\/／]\s*全职|全职\s*[\/／]\s*实习/, {
+            type: 'select',
+            options: ['', '实习', '全职', '兼职'],
+            derive: (w) => (/实习|intern/i.test(w.title || '') ? '实习' : '全职'),
+          }),
           f('start', '开始时间', /入职/, { type: 'month', generic: 'start', req: true }),
           f('end', '结束时间', /离职/, { type: 'month', generic: 'end', req: true }),
           f('city', '工作城市', null, { generic: 'city' }),

@@ -166,6 +166,7 @@
     if (el.tagName !== 'INPUT' || inDatePicker(el)) return false;
     if (el.getAttribute('role') === 'combobox' || el.getAttribute('aria-haspopup') === 'listbox' || el.closest('[role="combobox"]')) return true;
     if (el.closest('[class*="cascader"]')) return true; // 省 / 市这种一级一级点的选择器
+    if (el.closest('.mtd-select')) return true; // 美团 MTD 的下拉框：输入框能打字搜索，但必须在弹出的列表里点选才算数
     return el.readOnly && (!!el.closest(SELECT_WRAP) || /请选择|select|choose/i.test(el.placeholder));
   }
 
@@ -246,6 +247,9 @@
     if (!group && el.type !== 'file') {
       (el.labels ? [...el.labels] : []).forEach((l) => labels.push(shortText(l)));
       ['aria-label', 'placeholder', 'title'].forEach((a) => labels.push(norm(el.getAttribute(a))));
+      // MTD 下拉框的占位提示不在 placeholder 里，是旁边的一个小标签（如「请选择证件类型」）
+      const hint = el.closest('.mtd-select') && el.closest('.mtd-select').querySelector('.mtd-select-filter-hint');
+      if (hint) labels.push(norm(hint.textContent));
       (el.getAttribute('aria-labelledby') || '')
         .split(/\s+/)
         .filter(Boolean)
@@ -392,7 +396,7 @@
     // 已选的值通常显示在输入框旁边的一个小标签里，往外找几层
     let chosen = null;
     for (let n = el.parentElement, d = 0; n && d < 4 && !chosen; n = n.parentElement, d++) {
-      if (n.matches(SELECT_WRAP)) chosen = n.querySelector('[class*="selection-item"],[class*="selection__choice"]:not([class*="search"]),[class*="selected-value"],[class*="single-value"],[class*="select-value"],[class*="select__placeholder"]:not(.is-transparent)');
+      if (n.matches(SELECT_WRAP)) chosen = n.querySelector('[class*="selection-item"],[class*="selection__choice"]:not([class*="search"]),[class*="selected-value"],[class*="single-value"],[class*="select-value"],[class*="select-filter-label"]:not([class*="hint"]),[class*="select__placeholder"]:not(.is-transparent)');
     }
     if (!chosen && isComboDiv(el)) chosen = el.querySelector('[class*="selected-value"],[class*="selection-item"]');
     if (chosen) return chosen.textContent.trim();
@@ -428,7 +432,8 @@
       }
       return [];
     };
-    const trigger = el.closest('[role="combobox"]') || el; // 输入框在下拉外框里面时，点外框才会弹出选项
+    // 输入框在下拉外框里面时，点外框才会弹出选项（MTD 是外面那层 role=button）
+    const trigger = el.closest('[role="combobox"]') || el.closest('.mtd-select [role="button"]') || el;
     press(trigger);
     // 级联选择（省 / 市 / 区）：资料里写成「浙江/杭州」，一级一级点下去
     if (el.closest('[class*="cascader"]')) {
@@ -519,10 +524,15 @@
     if (!hit && anyOk) hit = first.find((o) => o.text) || null; // 这一项随便选一个就行
     if (!hit && typer) {
       // 选项太多（学校、专业）只渲染了一部分：输入关键字让它过滤
-      for (const q of queries(value)) {
+      // MTD 会把打进去的字本身也列成一个选项：只搜完整的值，等远程结果回来，免得选成搜索用的半截词
+      const mtd = !!el.closest('.mtd-select');
+      for (const q of mtd ? [String(value).trim()] : queries(value)) {
         setRaw(typer, q);
         await sleep(400);
-        hit = pickOption(toOptions(fresh()), value);
+        const exact = () => toOptions(fresh()).filter((o) => o.text === norm(value));
+        // 打的字排在第一个；列表里真有这一项时（会排在后面）选列表里的
+        if (mtd) await waitFor(() => (exact().length > 1 ? true : null), 1200);
+        hit = (mtd && exact().pop()) || pickOption(toOptions(fresh()), value);
         if (hit) break;
       }
       if (!hit) setRaw(typer, prior);
@@ -618,8 +628,46 @@
     await sleep(200);
     return true;
   }
+  // 美团 MTD 的月份选择器：面板里没有输入框和表格，年份用两侧箭头翻，月份是一个个按钮
+  async function pickMtdMonth(el, y, mo, retry = true) {
+    // 上一个面板可能还在收起的动画里：只认这次点开后新出现的面板
+    const pops = () => [...document.querySelectorAll('.mtd-datepicker-pop')].filter(visible);
+    for (const end = Date.now() + 800; Date.now() < end && pops().length; ) await sleep(50);
+    const before = new Set(pops());
+    el.scrollIntoView({ block: 'center' });
+    press(el);
+    const p = await waitFor(() => pops().find((x) => !before.has(x)), 1200);
+    if (!p || !p.querySelector('.mtd-month-panel-list-data')) return false;
+    for (let i = 0; i < 80; i++) {
+      const lab = [...p.querySelectorAll('.mtd-month-calendar-year-btn')].filter(visible).map((e) => /(\d{4})/.exec(e.textContent)).find(Boolean);
+      if (!lab) return false;
+      if (+lab[1] === +y) break;
+      const btn = [...p.querySelectorAll(+lab[1] > +y ? '.left-switcher' : '.right-switcher')].find(visible);
+      if (!btn) return false;
+      btn.click();
+      await sleep(40);
+    }
+    const cell = [...p.querySelectorAll('.mtd-month-panel-list-data')].filter(visible).find((c) => c.textContent.trim() === `${+mo}月`);
+    if (!cell || /disabled/.test(`${cell.className} ${cell.parentElement.className}`)) {
+      pressKey(el, 'Escape');
+      press(document.body);
+      // 月份是灰的：通常是网站里原来的结束时间比要填的开始时间还早。清掉同一行的其他时间再试一次（结束时间随后会填上）
+      const others = retry && cell ? [...(el.closest('.mtd-form') || document).querySelectorAll('.mtd-date-picker input')].filter((i) => i !== el && i.value) : [];
+      if (!others.length) return false;
+      for (const o of others) {
+        const x = o.closest('.mtd-date-picker').querySelector('.mtd-input-clear');
+        if (x) press(x);
+      }
+      await sleep(200);
+      return pickMtdMonth(el, y, mo, false);
+    }
+    cell.click();
+    await sleep(250);
+    return !!el.value.trim();
+  }
   async function fillPicker(el, value) {
     const m = /^(\d{4})-(\d{2})(?:-(\d{2}))?$/.exec(value);
+    if (m && el.closest('.mtd-date-picker')) return pickMtdMonth(el, m[1], m[2]);
     let range = el.closest('[class*="range"]');
     while (range && range.parentElement && range.parentElement.closest('[class*="range"]')) range = range.parentElement.closest('[class*="range"]'); // 取最外层
     const isStart = !!range && range.querySelectorAll('input').length > 1 && range.querySelector('input') === el;
@@ -781,7 +829,9 @@
   const EXT_RE = /\.(pdf|docx?|png|jpe?g|gif|bmp|txt|rtf)\b/gi;
   function fileKind(desc) {
     const test = (re) => desc.parts.some((p) => re.test(p));
-    if (test(S.files.skip)) return null;
+    // 「作品集请作为附件上传」这类提示说的是别处，不能因此把简历框当成作品集框跳过
+    const ELSEWHERE = /[^\s]*(请|可|需)(单独)?(作为|以|用|放在|放到|在|通过)?附件[^\s]*/g;
+    if (desc.parts.some((p) => S.files.skip.test(p.replace(ELSEWHERE, ' ')))) return null;
     if (test(S.files.photo)) return 'photo';
     if (test(S.files.resume)) return 'resume';
     return null;
@@ -818,8 +868,30 @@
       done.push(`${FILE_LABEL[kind]}（${f.name}）`);
     }
     globalThis.__raPendingFiles = [];
+    if (done.length) declineParse();
     return done;
   };
+
+  // 传完简历，网站常弹「是否解析附件并填充简历内容？」：一律选「否」，免得解析结果盖掉刚填好的内容
+  const PARSE_ASK = /解析.{0,12}(简历|附件)|(简历|附件).{0,12}解析|覆盖.{0,6}(已填|当前|简历)/;
+  const PARSE_NO = /^(否|不|取消|暂不|仅)|仅.{0,4}(附件|上传)|不(需要|解析|覆盖|更新)/;
+  function declineParse() {
+    const end = Date.now() + 15000;
+    const tick = () => {
+      const boxes = [...document.querySelectorAll('[role="dialog"],[class*="modal"],[class*="Modal"],[class*="dialog"],[class*="Dialog"],[class*="confirm"],[class*="popup"]')].filter(
+        (d) => visible(d) && PARSE_ASK.test(d.textContent) && d.textContent.length < 400
+      );
+      for (const d of boxes) {
+        const btn = [...d.querySelectorAll('button,[role="button"],a,[class*="btn"]')].find((b) => visible(b) && PARSE_NO.test(norm(b.textContent)) && norm(b.textContent).length < 16);
+        if (btn) {
+          btn.click();
+          return;
+        }
+      }
+      if (Date.now() < end) setTimeout(tick, 300);
+    };
+    setTimeout(tick, 300);
+  }
 
   // —— 主流程 ——
   // files: { resume: {name,type,size}, photo: {...} } 只是文件信息，不含内容
@@ -921,6 +993,7 @@
       const exists = !sec.repeat || !!item;
       if ((value == null || value === '') && field.alt) value = item?.[field.alt];
       if ((value == null || value === '') && field.fallback && exists) value = field.fallback;
+      if ((value == null || value === '') && field.derive && item) value = field.derive(item);
       return { value, label, field, entry: item, block: sec.repeat ? `${sec.id}#${state.idx[sec.id]}` : null };
     }
 
@@ -1063,7 +1136,11 @@
         const fresh = !(again && seen.has(el));
         seen.add(el);
         if (!fresh) continue;
-        const kind = fileKind(describe(el));
+        const fdesc = describe(el);
+        // 标签离得太远找不到时（如滴滴），看上传框自己的提示文字：「点击或将简历拖拽到此处上传」
+        const boxText = norm(box.textContent).slice(0, 160);
+        const kind = fileKind(fdesc) || (fdesc.labels.length ? null : fileKind({ parts: [...fdesc.parts, boxText] }));
+        if (opts.debug) (report.debug ??= []).push(`${fdesc.parts.join(' / ')} [file] -> ${kind || '?'}`);
         if (!kind) continue;
         if (!files[kind]) { report.noData.push(FILE_LABEL[kind]); continue; }
         if (!opts.overwrite && hasFile(el, box)) { report.kept++; continue; }
