@@ -1143,6 +1143,7 @@
         const kind = fileKind(fdesc) || (fdesc.labels.length ? null : fileKind({ parts: [...fdesc.parts, boxText] }));
         if (opts.debug) (report.debug ??= []).push(`${fdesc.parts.join(' / ')} [file] -> ${kind || '?'}`);
         if (!kind) continue;
+        if (kind === 'resume') globalThis.__raResumeBox = true;
         if (!files[kind]) { report.noData.push(FILE_LABEL[kind]); continue; }
         if (!opts.overwrite && hasFile(el, box)) { report.kept++; continue; }
         if (!acceptOk(el, files[kind].name)) { report.unknown++; continue; }
@@ -1347,7 +1348,9 @@
     // 填上了教育经历和工作经历：这是份网申简历。问用户要不要记到投递记录，并留意用户自己点「投递 / 提交」
     const secs = (globalThis.__raSections ??= new Set());
     for (const l of report.filled) secs.add(l.split(' · ')[0].replace(/ #\d+$/, ''));
-    const isApplication = (secs.has('教育经历') || secs.has('最高学历')) && secs.has('工作 / 实习经历');
+    // 社招常见的短表单（如滴滴）：只有姓名、电话、邮箱加一个上传简历的框，也算
+    const shortForm = secs.has('基本信息') && (globalThis.__raResumeBox || /投递|申请|apply|application|resume.?submit|deliver/i.test(`${location.pathname} ${document.title}`));
+    const isApplication = ((secs.has('教育经历') || secs.has('最高学历')) && secs.has('工作 / 实习经历')) || shortForm;
     if (!opts.dry && isApplication && window === window.top) {
       watchSubmit();
       askToRecord();
