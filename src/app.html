@@ -16,6 +16,8 @@
         <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="6.5" r="3.2"/><path d="M3.5 17c.8-3.3 3.4-5 6.5-5s5.7 1.7 6.5 5"/></svg>我的资料</a>
       <a href="#jobs" data-view="jobs" hidden>
         <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5"/><path d="M12.3 12.3L17 17"/></svg>岗位</a>
+      <a href="#autopilot" data-view="autopilot">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10.5L17 3.5l-4.5 13-2.8-5.2z"/><path d="M9.7 11.3L17 3.5"/></svg>Autopilot<span class="n" hidden></span></a>
       <a href="#tracker" data-view="tracker">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 3h9v14l-4.5-3.2L5.5 17z"/></svg>投递记录</a>
     </div>
@@ -122,9 +124,9 @@
 
       <section id="s-online" class="card">
         <h2>在线更新岗位</h2>
-        <p class="muted">「岗位」里的数据来自各大厂招聘官网的公开岗位，每天更新一次。打开后，进入「岗位」时如果本机的数据超过一天，就从下面这个地址下载新的一份：只下载公开岗位数据，不上传任何东西，不带你的资料、账号或任何标识。关着时扩展完全不联网，「岗位」里只显示以前下载过的数据。</p>
+        <p class="muted">「岗位」里的数据来自各大厂招聘官网的公开岗位，每天更新一次。打开后，进入「岗位」时如果本机的数据超过一天，就下载新的一份：只下载公开岗位数据，不上传任何东西，不带你的资料、账号或任何标识。默认打开；关掉后「岗位」里只显示以前下载过的数据。</p>
         <label class="check"><input id="online-jobs" type="checkbox"> 打开「在线更新岗位」</label>
-        <p class="muted">数据地址：raw.githubusercontent.com/HideInSky/resume-autofill（GitHub）</p>
+        <p class="muted">数据来自投简历神器的服务器（转发 GitHub 上 HideInSky/resume-autofill 每天更新的那份）。</p>
       </section>
 
       <section id="s-privacy" class="card" hidden>
@@ -162,6 +164,78 @@
       </aside>
       <article id="j-detail" class="j-detail"></article>
     </div>
+  </div>
+
+  <!-- Autopilot：匹配岗位 → 确认 → 自动投递 -->
+  <div class="page ap-page" id="view-autopilot" data-view-panel="autopilot" hidden>
+    <header class="ap-head">
+      <div>
+        <h1>Autopilot</h1>
+        <p class="muted">找到和你资料匹配的岗位，你确认后一个个自动投。遇到短信验证码在这里输入，遇到人机验证你点进去做完，它接着投。</p>
+      </div>
+      <div class="ap-runbox">
+        <span id="ap-today" class="muted"></span>
+        <button id="ap-run" class="primary">开始投递</button>
+      </div>
+    </header>
+    <p id="ap-run-note" class="ap-run-note" role="status"></p>
+
+    <section class="ap-card" id="ap-find">
+      <h2>找岗位</h2>
+      <div class="ap-grid">
+        <div><span class="card-title">类型</span>
+          <div id="ap-types" class="ap-types">
+            <label class="check"><input type="checkbox" value="校招"> 校招</label>
+            <label class="check"><input type="checkbox" value="实习"> 实习</label>
+            <label class="check"><input type="checkbox" value="社招"> 社招</label>
+          </div></div>
+        <label><span class="card-title">城市</span><input id="ap-cities" placeholder="如 北京、上海，空着表示不限"></label>
+        <label><span class="card-title">关键词</span><input id="ap-words" placeholder="如 数据分析、产品，空着表示不限"></label>
+        <label><span class="card-title">最多看几个</span><select id="ap-max"><option>30</option><option selected>60</option><option>120</option></select></label>
+      </div>
+      <div class="ap-row-actions">
+        <button id="ap-match" class="primary">开始匹配</button>
+        <label class="check"><input id="ap-auto" type="checkbox"> 自动确认 ≥ <input id="ap-min" class="ap-num" type="number" min="0" max="100" value="80"> 分的岗位</label>
+        <span id="ap-match-note" class="muted" role="status"></span>
+      </div>
+    </section>
+
+    <section class="ap-card">
+      <div class="ap-list-head">
+        <div id="ap-tabs" class="ap-tabs" role="tablist" aria-label="Autopilot 岗位"></div>
+        <button id="ap-clear" class="link">清掉已完成</button>
+      </div>
+      <div id="ap-list" class="ap-list"></div>
+    </section>
+
+    <details class="ap-card ap-fold">
+      <summary><h2>AI 设置</h2><span class="muted">匹配打分、回答表单里的开放问题时用</span></summary>
+      <label><span class="card-title">用哪家</span><select id="ap-provider"></select></label>
+      <div id="ap-key-row" class="ap-grid" hidden>
+        <label><span class="card-title">API Key</span><input id="ap-key" type="password" autocomplete="off" spellcheck="false" placeholder="只存在你的浏览器里"></label>
+        <label><span class="card-title">模型（空着用默认）</span><input id="ap-model" spellcheck="false"></label>
+        <a id="ap-key-link" target="_blank" rel="noopener noreferrer"></a>
+      </div>
+      <div id="ap-cc" class="ap-cc" hidden>
+        <p>用你自己的 Claude 订阅，不花 API 额度。要在电脑上装好 Claude Code：</p>
+        <ol>
+          <li>在终端里进入扩展的 <code>agent</code> 文件夹，运行 <code>npm install</code></li>
+          <li>运行 <code>claude mcp add toujianli -- node &lt;agent 文件夹的完整路径&gt;/server.mjs</code></li>
+          <li>把 <code>agent/commands/autopilot.md</code> 复制到 <code>~/.claude/commands/</code></li>
+          <li>打开 Claude Code，输入 <code>/autopilot</code>，让它一直开着</li>
+        </ol>
+      </div>
+      <div class="ap-row-actions"><button id="ap-test">试一下</button><span id="ap-test-note" class="muted" role="status"></span></div>
+    </details>
+
+    <details class="ap-card ap-fold">
+      <summary><h2>投递设置</h2><span class="muted">每天上限、提交前要不要再问你</span></summary>
+      <label class="ap-inline">每天最多投 <input id="ap-daily" class="ap-num" type="number" min="1" max="200"> 个</label>
+      <label class="check"><input id="ap-confirm" type="checkbox"> 点「提交」之前先停下来，让我看一眼</label>
+      <label class="check"><input id="ap-agree" type="checkbox"> 自动勾选「已阅读并同意」</label>
+      <label class="check"><input id="ap-close" type="checkbox"> 投完关掉那个标签页</label>
+      <p class="muted">要注册账号的网站，用「我的资料 → 网申账号」里的用户名和密码注册；要短信验证码的，验证码发到「基本信息」里的手机号。</p>
+    </details>
   </div>
 
   <!-- 投递记录 -->
@@ -231,6 +305,17 @@
 
   <div id="status" role="status" hidden></div>
 
+  <!-- 右下角：反馈 -->
+  <button id="fb-open" class="fb-open" aria-haspopup="dialog">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 17V3.5M4.5 4h10l-2 3.5 2 3.5h-10"/></svg>反馈</button>
+  <div id="fb" class="fb" role="dialog" aria-labelledby="fb-title" hidden>
+    <b id="fb-title">反馈</b>
+    <p class="muted">哪里不好用、哪个网站填不上、想要什么功能，都可以写。</p>
+    <textarea id="fb-text" rows="5" maxlength="2000" placeholder="写在这里"></textarea>
+    <input id="fb-contact" maxlength="100" placeholder="联系方式（选填，想让我们回复你就留一个）">
+    <div class="fb-foot"><span id="fb-note" class="muted" role="status"></span><button id="fb-cancel">取消</button><button id="fb-send" class="primary">发送</button></div>
+  </div>
+
   <script src="schema.js"></script>
   <script src="ai-config.js"></script>
   <script src="telemetry.js"></script>
@@ -243,6 +328,10 @@
   <script src="documents.js"></script>
   <script src="jobs-config.js"></script>
   <script src="jobs.js"></script>
+  <script src="llm.js"></script>
+  <script src="run.js"></script>
+  <script src="autopilot.js"></script>
+  <script src="feedback.js"></script>
   <script src="app.js"></script>
   <script src="tour.js"></script>
 </body>

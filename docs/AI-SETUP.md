@@ -109,3 +109,23 @@ npx wrangler d1 execute toujianli --remote --command "SELECT date(at/1000,'unixe
 ## 改了字段之后
 
 提示词从 `src/schema.js` 的字段定义生成，扩展的「复制提示词」和服务器用同一份。改了字段后重新 `npm run deploy`（它会先运行 `scripts/ai-prompt.mjs` 重新生成 `server/src/prompt.js`）。
+
+## 岗位数据：让所有用户拿到同一份最新数据
+
+扩展里的「岗位」不打包在扩展里，而是每天由 GitHub Actions 抓一次、发布到仓库的 `jobs-data` 分支，服务器的 `GET /v1/jobs/index.json`、`/v1/jobs/c/<公司>.json` 转发这份数据并在边缘缓存 30 分钟。现在远端还没有 `jobs-data` 分支，所以大家看到的还是你本机 11 月 24 日抓的那份。要让它每天自动更新：
+
+1. 把 `.github/workflows/jobs-data.yml` 放到 **main** 分支（GitHub 只按默认分支上的文件跑定时任务），推送。
+2. 在 GitHub 仓库的 Actions 页面手动运行一次「岗位数据」，确认生成了 `jobs-data` 分支。
+3. 服务器的 `JOBS_REPO`（wrangler.toml）指向这个仓库；重新部署服务器后，扩展会先从服务器下载，连不上再直接找 GitHub。
+
+## 反馈
+
+扩展右下角的「反馈」发到 `POST /v1/feedback`，存在 D1 的 `feedback` 表（同一网络每天最多 20 条）。部署后先跑一次 `npm run db:init` 建表。查看：
+
+```bash
+npx wrangler d1 execute toujianli --remote --command "SELECT datetime(at/1000,'unixepoch','+8 hours') AS 时间, page, text, contact FROM feedback ORDER BY at DESC LIMIT 50"
+```
+
+## 域名
+
+`*.workers.dev` 在中国大陆基本打不开，岗位数据、AI 整理、反馈都会失败。买一个自己的域名（比如 `xxx.com`），在 Cloudflare 里给 Worker 绑上 `api.xxx.com`，再运行 `node scripts/ai-endpoint.mjs https://api.xxx.com`。服务器放在 Cloudflare（境外）不需要备案；国内访问 Cloudflare 自定义域名一般能用，但速度不稳定。

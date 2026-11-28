@@ -1,13 +1,15 @@
 // 投简历神器的云端服务（Cloudflare Worker）：
 //   POST /v1/parse  用户在「我的资料」里点「用 AI 整理」后，把简历 PDF 交给 Claude 整理成资料的 JSON
 //   POST /v1/event  匿名使用统计（只有事件名和几个计数，不含任何资料）
+//   GET  /v1/jobs/… 岗位数据：转发 GitHub Actions 每天发布到 jobs-data 分支的那份，在边缘缓存，所有用户拿到的是同一份最新数据
+//   POST /v1/feedback 用户在扩展右下角「反馈」里写的话（联系方式是用户自己选填的）
 // 简历和整理结果都不落盘、不写日志；数据库里只记次数（用来限额）和匿名事件。
 import Anthropic from '@anthropic-ai/sdk';
 import PROMPT from './prompt.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Max-Age': '86400',
 };
@@ -19,7 +21,7 @@ const MAX_PDF_B64 = 2_800_000; // 约 2 MB 的 PDF；简历一般几百 KB
 const DAY = 86_400_000;
 // 扩展会发的事件；别的一律丢掉
 const EVENTS = new Set([
-  'first_open', 'first_action', 'nav', 'doc_upload', 'doc_limit', 'ai_parse', 'prompt_copy', 'paste_import', 'tour',
+  'first_open', 'first_action', 'nav', 'doc_upload', 'doc_limit', 'ai_parse', 'prompt_copy', 'paste_import', 'tour', 'pilot_add', 'pilot_match', 'pilot_done', 'feedback',
 ]);
 
 const num = (v, d) => (Number.isFinite(+v) && +v > 0 ? +v : d);
@@ -126,15 +128,55 @@ async function event(req, env) {
   return new Response(null, { status: 204, headers: CORS });
 }
 
+// 岗位数据：只转发这两种文件
+const JOB_PATH = /^(index\.json|c\/[a-z0-9_-]{1,40}\.json)$/;
+async function jobs(pathname, env, ctx) {
+  const path = pathname.slice('/v1/jobs/'.length);
+  if (!JOB_PATH.test(path)) return fail(404, 'not_found', '没有这个文件');
+  const upstream = `https://raw.githubusercontent.com/${env.JOBS_REPO || 'HideInSky/resume-autofill'}/jobs-data/${path}`;
+  const cache = caches.default;
+  const key = new Request(`https://jobs-cache/${path}`);
+  let res = await cache.match(key);
+  if (!res) {
+    const up = await fetch(upstream, { cf: { cacheTtl: 1800, cacheEverything: true } });
+    if (!up.ok) return fail(up.status === 404 ? 404 : 502, 'upstream', '岗位数据暂时取不到');
+    res = new Response(up.body, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=1800' } });
+    ctx.waitUntil(cache.put(key, res.clone()));
+  }
+  return new Response(res.body, { headers: { ...CORS, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=1800' } });
+}
+
+async function feedback(req, env) {
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return fail(400, 'bad_request', '请求格式不对');
+  }
+  const { install, text, contact, page, v } = body || {};
+  if (!INSTALL_RE.test(install || '')) return fail(400, 'bad_request', '请求格式不对');
+  const t = String(text || '').trim().slice(0, 2000);
+  if (!t) return fail(400, 'empty', '写点什么再发送');
+  const ip = await ipKey(req, env);
+  const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM feedback WHERE ip = ?1 AND at > ?2').bind(ip, Date.now() - DAY).first();
+  if (c.n >= 20) return fail(429, 'quota', '今天发得太多了，明天再发');
+  await env.DB.prepare('INSERT INTO feedback (at, install, ip, text, contact, page, v) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)')
+    .bind(Date.now(), install, ip, t, String(contact || '').slice(0, 100), String(page || '').slice(0, 20), String(v || '').slice(0, 16))
+    .run();
+  return json({ ok: true });
+}
+
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     const { pathname } = new URL(req.url);
     if (req.method === 'GET' && pathname === '/') return json({ ok: true });
+    if (req.method === 'GET' && pathname.startsWith('/v1/jobs/')) return jobs(pathname, env, ctx);
     if (req.method !== 'POST') return fail(405, 'method', '只接受 POST');
     if (!originOk(req, env)) return fail(403, 'origin', '来源不对');
     if (pathname === '/v1/parse') return parse(req, env);
     if (pathname === '/v1/event') return event(req, env);
+    if (pathname === '/v1/feedback') return feedback(req, env);
     return fail(404, 'not_found', '没有这个地址');
   },
 };

@@ -16,7 +16,7 @@
     const v = current();
     for (const p of panels) p.hidden = p.dataset.viewPanel !== v;
     for (const a of links) a.toggleAttribute('aria-current', a.dataset.view === v);
-    document.title = { profile: '我的资料', jobs: '岗位', tracker: '投递记录', documents: '文档' }[v] + ' · 投简历神器';
+    document.title = { profile: '我的资料', jobs: '岗位', tracker: '投递记录', documents: '文档', autopilot: 'Autopilot' }[v] + ' · 投简历神器';
     document.body.dataset.view = v;
     document.dispatchEvent(new CustomEvent('ra-view', { detail: v }));
   }
@@ -30,7 +30,7 @@
     if (document.body.dataset.tour) return; // 新手指引带着翻的页，不算用户的操作
     // 用户自己切到了哪一页（第一次打开后先去了哪里）
     Telemetry.send('nav', { view: v });
-    const action = { profile: 'open_profile', jobs: 'open_jobs', tracker: 'open_tracker' }[v];
+    const action = { profile: 'open_profile', jobs: 'open_jobs', tracker: 'open_tracker', autopilot: 'open_autopilot' }[v];
     if (action) Telemetry.firstAction(action);
   });
   show();

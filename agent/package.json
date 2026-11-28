@@ -1,0 +1,16 @@
+{
+  "name": "toujianli-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local bridge: lets 投简历神器 Autopilot use your own Claude Code as its AI",
+  "type": "module",
+  "main": "server.mjs",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  }
+}

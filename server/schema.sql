@@ -25,3 +25,16 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS events_event_at ON events (event, at);
 CREATE INDEX IF NOT EXISTS events_install ON events (install);
+
+-- 扩展右下角「反馈」：用户写的话，联系方式是用户自己选填的
+CREATE TABLE IF NOT EXISTS feedback (
+  id INTEGER PRIMARY KEY,
+  at INTEGER NOT NULL,
+  install TEXT NOT NULL,
+  ip TEXT NOT NULL,
+  text TEXT NOT NULL,
+  contact TEXT,
+  page TEXT,
+  v TEXT
+);
+CREATE INDEX IF NOT EXISTS feedback_at ON feedback (at);

@@ -11,6 +11,8 @@ PER_IP_DAY = "20"
 DAILY_LIMIT = "500"
 # 只接受扩展发来的请求：上架后填 chrome-extension://<扩展 ID>，多个用逗号隔开；空着表示不检查
 ALLOWED_ORIGINS = ""
+# 岗位数据从哪个 GitHub 仓库的 jobs-data 分支转发
+JOBS_REPO = "HideInSky/resume-autofill"
 
 [[d1_databases]]
 binding = "DB"

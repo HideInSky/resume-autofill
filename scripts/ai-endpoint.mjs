@@ -15,14 +15,16 @@ if (arg) {
 }
 
 const cfgPath = join(root, 'src/ai-config.js');
-writeFileSync(cfgPath, readFileSync(cfgPath, 'utf8').replace(/const AI_ENDPOINT = '[^']*';/, `const AI_ENDPOINT = '${origin}';`));
+const cfg = readFileSync(cfgPath, 'utf8');
+const old = (cfg.match(/const AI_ENDPOINT = '([^']*)';/) || [])[1] || '';
+writeFileSync(cfgPath, cfg.replace(/const AI_ENDPOINT = '[^']*';/, `const AI_ENDPOINT = '${origin}';`));
 
 const manPath = join(root, 'manifest.json');
 const man = JSON.parse(readFileSync(manPath, 'utf8'));
 const parts = man.content_security_policy.extension_pages.split(';').map((s) => s.trim());
 const i = parts.findIndex((p) => p.startsWith('connect-src'));
-// 以前填过的服务器地址是不带路径的 https 源，去掉；岗位数据的地址带路径，保留
-const keep = parts[i].split(/\s+/).slice(1).filter((s) => !/^https:\/\/[^/]+\/?$/.test(s));
+// 去掉以前填过的服务器地址；别的地址（岗位数据、各家 AI 接口）保留
+const keep = parts[i].split(/\s+/).slice(1).filter((s) => !old || s.replace(/\/$/, '') !== old);
 parts[i] = ['connect-src', ...keep, ...(origin ? [origin] : [])].join(' ');
 man.content_security_policy.extension_pages = parts.join('; ');
 writeFileSync(manPath, JSON.stringify(man, null, 2) + '\n');

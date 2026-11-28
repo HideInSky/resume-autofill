@@ -39,9 +39,11 @@
   const persist = () => localStorage.setItem('ra-job-filters', JSON.stringify(Object.fromEntries(FILTERS.map((f) => [f.key, [...picked[f.key]]]))));
 
   const hue = (s) => [...String(s)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7);
+  // 大厂用接近品牌色的颜色，其他按名字算一个
+  const BRAND = { 腾讯: 212, 阿里巴巴: 24, 字节跳动: 220, 美团: 42, 京东: 357, 百度: 228, 拼多多: 2, 网易: 356, 小红书: 352, 哔哩哔哩: 196, 滴滴: 26, 快手: 18, 得物: 200, 贝壳: 168, 爱奇艺: 100, 携程: 210, 华为: 358, 小米: 22, 蚂蚁集团: 214 };
   function logo(name, big) {
     const n = h('span', { className: 'logo' + (big ? ' big' : ''), textContent: (name || '？').slice(0, 1).toUpperCase() });
-    n.style.setProperty('--h', hue(name || ''));
+    n.style.setProperty('--h', BRAND[name] ?? hue(name || ''));
     n.setAttribute('aria-hidden', 'true');
     return n;
   }
@@ -167,21 +169,25 @@
   // —— 列表 ——
   function item(j) {
     const name = companyName[j[0]] || j[0];
+    const cities = j[3] ? j[3].split('|') : [];
+    const where = cities.length > 2 ? `${cities.length} 个城市` : cities.join('、');
+    const key = j[0] + ':' + j[1];
     const b = h(
-      'button',
-      { className: 'j-item' + (j === current ? ' on' : '') },
+      'div',
+      { className: 'j-item' + (j === current ? ' on' : ''), role: 'button', tabIndex: 0 },
       logo(name),
       h(
         'span',
         { className: 'j-item-main' },
         h('b', { textContent: j[2] }),
-        h('span', { textContent: name }),
-        h('span', { className: 'muted', textContent: [j[3].split('|').slice(0, 2).join('、') + (j[3].split('|').length > 2 ? ' 等' : ''), j[4]].filter(Boolean).join(' · ') }),
-        j[7] ? h('span', { className: 'muted small', textContent: ago(j[7]) }) : null
+        h('span', { className: 'j-item-co', textContent: name }),
+        h('span', { className: 'j-item-meta', textContent: [where, j[4]].filter(Boolean).join(' · ') }),
+        j[7] ? h('span', { className: 'j-item-date', textContent: ago(j[7]) }) : null
       ),
-      saved.has(j[0] + ':' + j[1]) ? h('span', { className: 'j-saved', title: '已收藏' }, svg(BOOKMARK, 15)) : null
+      h('span', { className: 'j-item-save' + (saved.has(key) ? ' on' : ''), title: saved.has(key) ? '已收藏' : '' }, svg(BOOKMARK, 16))
     );
     b.addEventListener('click', () => select(j));
+    b.addEventListener('keydown', (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), select(j)));
     return b;
   }
   function renderList() {
@@ -226,7 +232,7 @@
     if (raw && typeof raw === 'object') for (const [id, v] of Object.entries(raw)) if (v && typeof v === 'object') out[str(id, 80)] = { u: safeUrl(v.u), d: str(v.d), r: str(v.r) };
     return out;
   }
-  const online = async () => ((await chrome.storage.local.get('settings')).settings || {}).onlineJobs === true;
+  const online = async () => ((await chrome.storage.local.get('settings')).settings || {}).onlineJobs !== false; // 默认打开
   // 自己抓过数据（scripts/jobs/run.py 生成 build/site/）再「加载已解压的扩展」时，直接读本机这份，不联网。
   // 商店包里没有 build/，这一步会找不到文件，照常走在线下载。
   let fromLocal = false;
@@ -288,33 +294,109 @@
     const key = j[0] + ':' + j[1];
     const saveBtn = h('button', { className: 'icon-btn' + (saved.has(key) ? ' on' : ''), title: saved.has(key) ? '取消收藏' : '收藏到投递记录', ariaLabel: '收藏' }, svg(BOOKMARK, 18));
     saveBtn.addEventListener('click', () => toggleSave(j, d));
+    const pilotBtn = h('button', { className: 'j-pilot', textContent: 'Autopilot', title: '交给 Autopilot 自动投递', disabled: !d.u });
+    pilotBtn.addEventListener('click', () => toPilot(j, d, pilotBtn));
     const applyBtn = h('button', { className: 'primary', textContent: '去官网申请', disabled: !d.u });
     applyBtn.addEventListener('click', () => applyTo(j, d));
-    const chips = [j[4], j[5] !== '不限' ? j[5] : '', j[6]].filter(Boolean);
+    const cities = j[3] ? j[3].split('|') : [];
+    const chips = [
+      j[4] ? h('span', { className: 'pill-chip', textContent: j[4] }) : null,
+      cities.length ? h('span', { className: 'pill-chip', title: cities.join('、') }, svg(PIN, 13), cities.slice(0, 2).join('、') + (cities.length > 2 ? ` +${cities.length - 2}` : '')) : null,
+      j[5] && j[5] !== '不限' ? h('span', { className: 'pill-chip', textContent: j[5] }) : null,
+    ];
+    const text = (d.d || '') + '\n' + (d.r || '');
+    const skills = skillsIn(text);
+    const facts = [
+      ['类型', j[4]],
+      ['经验', j[5]],
+      ['类别', j[6]],
+      ['地点', cities.join('、')],
+    ].filter(([, v]) => v);
     $('j-detail').replaceChildren(
-      ...[h(
+      h(
         'header',
         { className: 'j-d-head' },
         logo(name, true),
         h('div', { className: 'j-d-co' }, h('b', { textContent: name }), h('span', { className: 'muted', textContent: `官网数据 · 更新于 ${data.fetched || '—'}` })),
-        h('div', { className: 'j-d-actions' }, saveBtn, applyBtn)
+        h('div', { className: 'j-d-actions' }, saveBtn, pilotBtn, applyBtn)
       ),
       h('h1', { textContent: j[2] }),
-      h('p', { className: 'muted', textContent: [j[6], ago(j[7])].filter(Boolean).join(' · ') }),
+      h('p', { className: 'j-d-meta', textContent: [j[6], ago(j[7])].filter(Boolean).join(' · ') }),
+      h('div', { className: 'j-chips' }, chips),
       h(
         'div',
-        { className: 'j-chips' },
-        chips.map((c) => h('span', { className: 'pill-chip', textContent: c })),
-        j[3] ? h('span', { className: 'pill-chip' }, svg(PIN, 13), j[3].split('|').slice(0, 4).join('、') + (j[3].split('|').length > 4 ? ` 等 ${j[3].split('|').length} 地` : '')) : null
-      ),
-      h('hr'),
-      d.d ? h('section', {}, h('h2', { textContent: '岗位职责' }), h('div', { className: 'j-text', textContent: d.d })) : null,
-      d.r ? h('section', {}, h('h2', { textContent: '任职要求' }), h('div', { className: 'j-text', textContent: d.r })) : null,
-      !d.d && !d.r ? h('p', { className: 'muted', textContent: d.missing ? '详细介绍没能下载（可能没联网或没打开在线更新），请到官网查看。' : '这个岗位的详细介绍请到官网查看。' }) : null,
-      d.u ? h('p', {}, h('a', { href: d.u, target: '_blank', rel: 'noopener noreferrer', textContent: d.missing ? '打开公司招聘官网 ↗' : '在官网查看原文 ↗' })) : null,
-      ].filter(Boolean)
+        { className: 'j-d-body' },
+        h(
+          'div',
+          { className: 'j-d-text' },
+          h('h2', { textContent: '关于这个岗位' }),
+          d.r ? h('section', {}, h('h3', { textContent: '任职要求' }), paras(d.r)) : null,
+          d.d ? h('section', {}, h('h3', { textContent: '岗位职责' }), paras(d.d)) : null,
+          !d.d && !d.r ? h('p', { className: 'muted', textContent: d.missing ? '详细介绍没能下载（可能没联网或没打开在线更新），请到官网查看。' : '这个岗位的详细介绍请到官网查看。' }) : null,
+          d.u ? h('p', {}, h('a', { href: d.u, target: '_blank', rel: 'noopener noreferrer', textContent: d.missing ? '打开公司招聘官网 ↗' : '在官网查看原文 ↗' })) : null
+        ),
+        h(
+          'aside',
+          { className: 'j-d-side' },
+          h('h2', { textContent: '要求一览' }),
+          h('dl', { className: 'j-facts' }, facts.flatMap(([k, v]) => [h('dt', { textContent: k }), h('dd', { textContent: v })])),
+          skills.length
+            ? [
+                h('h2', { textContent: '技能' }),
+                h('p', { className: 'muted small', textContent: mine.size ? '你资料里有的已标出' : '在「我的资料」里写上技能，这里会标出你有的' }),
+                h('div', { className: 'j-skills' }, skills.map((k) => h('span', { className: 'j-skill' + (has(k) ? ' on' : ''), textContent: (has(k) ? '✓ ' : '') + k }))),
+              ]
+            : null,
+          h('div', { className: 'j-pilot-card' }, h('b', { textContent: '让 Autopilot 帮你投' }), h('p', { className: 'muted', textContent: '自动打开官网、登录、填表、提交。遇到验证码会叫你。' }), (() => {
+            const b = h('button', { className: 'primary', textContent: '交给 Autopilot', disabled: !d.u });
+            b.addEventListener('click', () => toPilot(j, d, b));
+            return b;
+          })())
+        )
+      )
     );
     $('j-detail').scrollTop = 0;
+  }
+
+  // 职责 / 要求：按行拆开，「1、」「•」开头的行显示成列表
+  function paras(t) {
+    const lines = String(t).split(/\n+|(?=\s(?:\d{1,2}[、.．)）]|[•·●▪-])\s*)/).map((x) => x.trim()).filter(Boolean);
+    const out = [];
+    let ul = null;
+    for (const line of lines) {
+      const m = line.match(/^(?:\d{1,2}[、.．)）]|[•·●▪-])\s*(.+)$/);
+      if (m) {
+        if (!ul) out.push((ul = h('ul')));
+        ul.append(h('li', { textContent: m[1] }));
+      } else {
+        ul = null;
+        out.push(h('p', { textContent: line }));
+      }
+    }
+    return h('div', { className: 'j-text' }, out);
+  }
+  // 技能：岗位要求里出现的常见技能词；资料里写过的标出来
+  const SKILLS = ['Python', 'SQL', 'Java', 'C++', 'Go', 'JavaScript', 'TypeScript', 'React', 'Vue', 'Node', 'Linux', 'Spark', 'Hadoop', 'Hive', 'Flink', 'Kafka', 'Redis', 'MySQL', 'Excel', 'Tableau', 'Power BI', 'R', 'SPSS', 'SAS', 'Axure', 'Figma', 'Photoshop', 'PyTorch', 'TensorFlow', '机器学习', '深度学习', '大模型', 'NLP', 'CV', '统计', 'A/B', '数据分析', '数据挖掘', '可视化', '产品', '运营', '用户研究', '增长', '英语', '日语', 'Unity', 'UE', 'iOS', 'Android', 'Kubernetes', 'Docker'];
+  let mine = new Set();
+  let mineText = '';
+  const has = (k) => mineText.includes(k.toLowerCase());
+  async function loadMine() {
+    try {
+      const book = await Vault.book();
+      const p = (book.list[Math.min(book.active || 0, book.list.length - 1)] || {}).data || {};
+      mineText = JSON.stringify([p.other, p.work, p.project, p.education]).toLowerCase();
+      mine = new Set(SKILLS.filter(has));
+    } catch {}
+  }
+  function skillsIn(text) {
+    const t = text.toLowerCase();
+    return SKILLS.filter((k) => (k.length <= 2 && /^[a-z]+$/i.test(k) ? new RegExp(`(^|[^a-z])${k.toLowerCase()}([^a-z+]|$)`).test(t) : t.includes(k.toLowerCase()))).slice(0, 14);
+  }
+  async function toPilot(j, d, btn) {
+    if (!globalThis.Pilot) return;
+    globalThis.Pilot.add({ key: j[0] + ':' + j[1], company: companyName[j[0]] || j[0], title: j[2], city: (j[3] || '').split('|')[0], url: d.u });
+    btn.textContent = '已加入 Autopilot ✓';
+    btn.disabled = true;
   }
 
   // —— 收藏 / 申请 ——
@@ -391,17 +473,30 @@
     if (loading) return loading;
     loading = (async () => {
       await loadSaved();
+      await loadMine();
       const local = await readLocal('index.json');
-      fromLocal = !!local;
-      if (local) {
-        try {
-          return show(checkIndex(local), '本机数据');
-        } catch {
-          fromLocal = false;
-        }
-      }
+      let localData = null;
+      try {
+        localData = local && checkIndex(local);
+      } catch {}
       const { jobsIndex: cached } = await chrome.storage.local.get('jobsIndex');
       const on = await online();
+      // 本机抓过的数据：服务器上的更新时用服务器的，否则用本机的
+      fromLocal = false;
+      if (localData) {
+        let fresh = cached && !force && Date.now() - cached.at < DAY ? cached.data : null;
+        if (!fresh && on) {
+          try {
+            fresh = checkIndex(await download('index.json'));
+            await chrome.storage.local.set({ jobsIndex: { at: Date.now(), data: fresh } });
+          } catch {}
+        }
+        if (!fresh || String(fresh.fetched || '') <= String(localData.fetched || '')) {
+          fromLocal = true;
+          return show(localData, '本机数据');
+        }
+        return show(fresh);
+      }
       if (!on) {
         if (cached) return show(cached.data, '在线更新已关闭');
         return notice('在线更新岗位已关闭', '岗位数据不打包在扩展里。打开「在线更新岗位」后，扩展会下载各大厂官网的公开岗位数据（只下载，不上传任何东西）。关着时扩展完全不联网。', button('去打开', goSetting, true));
@@ -433,4 +528,11 @@
     if (e.detail === 'jobs' && !data) load();
   });
   if (location.hash.startsWith('#jobs')) load();
+  // 给 Autopilot 用：同一份岗位数据
+  globalThis.JobsDB = {
+    get: async () => data || (await load(), data),
+    detailOf,
+    name: (slug) => companyName[slug] || slug,
+    hue: (name) => BRAND[name] ?? hue(name || ''),
+  };
 })();
